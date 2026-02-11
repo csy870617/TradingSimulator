@@ -119,6 +119,7 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
         <button class="sb" data-s="20">20x</button>
       </div>
       <button class="btn bn" id="btn-nxt" disabled>다음 봉 ▶</button>
+      <button class="btn br" id="btn-exit" style="font-size:12px;padding:8px 14px;" disabled>종료</button>
     </div>
     <div class="cw">
       <div class="ch">
@@ -169,7 +170,7 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
 // ═══════════════════════════════════════
 class CC{
   constructor(cv,o={}){
-    this.cv=cv;this.cx=cv.getContext('2d');this.d=[];this.mk=[];
+    this.cv=cv;this.cx=cv.getContext('2d');this.d=[];this.mk=[];this.zones=[];
     this.o={bg:'#0c1117',gc:'rgba(30,45,66,.45)',uc:'#22c55e',dc:'#ef4444',tc:'#4a5d78',
       mac:['#f59e0b','#8b5cf6','#ec4899'],map:[5,20,60],sma:true,svol:true,rp:58,bp:26,tp:12,...o};
     this.sc=0;this.cw=7;this.mnw=1.5;this.mxw=28;this.drag=false;this.lx=0;this.ch=null;
@@ -230,6 +231,17 @@ class CC{
     for(let i=si;i<ei;i+=step){const x=iX(i)+cw/2;if(x<0||x>cW)continue;
       cx.fillStyle=o.tc;cx.font=`${8*dpr}px Menlo,Consolas,monospace`;cx.textAlign='center';
       cx.fillText(d[i].time?d[i].time.slice(2,7):'',x,H-5*dpr);}
+    // zones (highlight regions)
+    for(const z of this.zones){
+      const zs=Math.max(si,z.start),ze=Math.min(ei,z.end);if(zs>=ze)continue;
+      const x1=iX(zs),x2=iX(ze)+cw;
+      cx.fillStyle=z.color||'rgba(59,130,246,.06)';cx.fillRect(x1,tp,x2-x1,cH);
+      cx.strokeStyle=z.border||'rgba(59,130,246,.2)';cx.lineWidth=dpr;cx.setLineDash([4*dpr,3*dpr]);
+      cx.beginPath();cx.moveTo(x1,tp);cx.lineTo(x1,tp+cH);cx.stroke();
+      cx.beginPath();cx.moveTo(x2,tp);cx.lineTo(x2,tp+cH);cx.stroke();cx.setLineDash([]);
+      if(z.label){cx.fillStyle=z.border||'rgba(59,130,246,.5)';cx.font=`${9*dpr}px sans-serif`;cx.textAlign='center';
+        cx.fillText(z.label,(x1+x2)/2,tp+12*dpr);}
+    }
     // volume
     if(o.svol){const vH=cH*.11,vB=tp+cH;let mV=0;for(const v of vis)if(v.vol>mV)mV=v.vol;
       if(mV>0)for(let i=si;i<ei;i++){const v=d[i],x=iX(i),bw=cw*.7,vh=(v.vol/mV)*vH;
@@ -309,9 +321,10 @@ const MKT={
   ]}
 };
 
-function genD(pr,len=1300){
-  const d=[];let b=pr[0]+Math.random()*(pr[1]-pr[0]);
-  const sy=2010+Math.floor(Math.random()*11);let dt=new Date(sy,Math.floor(Math.random()*12),1);
+function genD(pr,len=1300,startBase,startDt){
+  const d=[];let b=startBase||(pr[0]+Math.random()*(pr[1]-pr[0]));
+  let dt;
+  if(startDt){dt=new Date(startDt);}else{const sy=2010+Math.floor(Math.random()*11);dt=new Date(sy,Math.floor(Math.random()*12),1);}
   let tD=Math.random()>.5?1:-1,tL=30+Math.floor(Math.random()*80),tc=0;
   for(let i=0;i<len;i++){
     dt.setDate(dt.getDate()+1);while(dt.getDay()===0||dt.getDay()===6)dt.setDate(dt.getDate()+1);
@@ -323,6 +336,12 @@ function genD(pr,len=1300){
     b=c;if(b<pr[0]*.3)b=pr[0]*.5;if(b>pr[1]*2)b=pr[1]*1.2;
   }
   return d;
+}
+
+function extendData(){
+  const m=MKT[S.mk];const last=S.rawAll[S.rawAll.length-1];
+  const more=genD(m.pr,500,last.close,last.time);
+  S.rawAll=S.rawAll.concat(more);
 }
 
 // ═══════════════════════════════════════
@@ -380,6 +399,7 @@ function startNew(){
   document.getElementById('btn-nxt').disabled=false;
   document.getElementById('btn-buy').disabled=false;
   document.getElementById('btn-sell').disabled=false;
+  document.getElementById('btn-exit').disabled=false;
 }
 
 function renderChart(){
@@ -394,7 +414,14 @@ function renderChart(){
 }
 
 function advance(n=1){
-  for(let i=0;i<n;i++){if(S.visCntDaily>=S.rawAll.length){showResult();return;}S.visCntDaily++;}
+  for(let i=0;i<n;i++){
+    // extend data if running out
+    if(S.visCntDaily>=S.rawAll.length-10)extendData();
+    S.visCntDaily++;
+    // bankruptcy check
+    const p=curP(),tot=S.cash+S.pos.q*p;
+    if(tot<=0){showResult(true);return;}
+  }
   renderChart();updateUI();
 }
 
@@ -444,32 +471,47 @@ function updateUI(){
   const tt=S.w+S.l;document.getElementById('v-wr').textContent=tt>0?`승률: ${(S.w/tt*100).toFixed(0)}%`:'승률: —';
 }
 
-function showResult(){
+function showResult(bankrupt=false){
   if(S.pos.q>0){const p=curP();S.cash+=p*S.pos.q;const pnl=(p-S.pos.a)*S.pos.q;if(pnl>0)S.w++;else if(pnl<0)S.l++;S.pos={q:0,a:0};}
   const tr=(S.cash-IC)/IC*100,ip=tr>=0;
-  document.getElementById('m-t').textContent=ip?'🎉 수익 달성!':'📉 손실 기록';
+  document.getElementById('m-t').textContent=bankrupt?'💀 파산!':ip?'🎉 수익 달성!':'📉 손실 기록';
   document.getElementById('m-s').textContent=`${S.stk.n} (${S.stk.t}) 시뮬레이션 결과`;
   const tt=S.w+S.l;
   document.getElementById('m-st').innerHTML=`
-    <div class="sr"><span>최종 자산</span><span class="m ${ip?'pos':'neg'}">₩${Math.floor(S.cash).toLocaleString()}</span></div>
+    <div class="sr"><span>최종 자산</span><span class="m ${ip?'pos':'neg'}">₩${Math.floor(Math.max(0,S.cash)).toLocaleString()}</span></div>
     <div class="sr"><span>수익률</span><span class="m ${ip?'pos':'neg'}">${tr>=0?'+':''}${tr.toFixed(2)}%</span></div>
     <div class="sr"><span>총 거래</span><span class="m">${S.trd}회</span></div>
-    <div class="sr"><span>승률</span><span class="m">${tt>0?(S.w/tt*100).toFixed(0):'—'}%</span></div>`;
+    <div class="sr"><span>승률</span><span class="m">${tt>0?(S.w/tt*100).toFixed(0):'—'}%</span></div>
+    ${bankrupt?'<div class="sr" style="color:var(--r);font-weight:700;">⚠️ 총 자산이 0 이하로 파산했습니다</div>':''}`;
   document.getElementById('modal').classList.add('show');
-  document.getElementById('btn-nxt').disabled=true;updateUI();
+  document.getElementById('btn-nxt').disabled=true;
+  document.getElementById('btn-buy').disabled=true;
+  document.getElementById('btn-sell').disabled=true;
+  document.getElementById('btn-exit').disabled=true;
+  updateUI();
 }
 
 // ═══════════════════════════════════════
 // 25 CHART PATTERNS
 // ═══════════════════════════════════════
 function genPat(type,len){
-  const d=[];let b=100;let dt=new Date(2023,0,2);
-  const push=(dir,vol,cnt)=>{for(let i=0;i<cnt;i++){
+  // Generate pre-context
+  const pre=[];let b=100;let dt=new Date(2022,6,1);
+  const pushTo=(arr,dir,vol,cnt)=>{for(let i=0;i<cnt;i++){
     dt.setDate(dt.getDate()+1);while(dt.getDay()===0||dt.getDay()===6)dt.setDate(dt.getDate()+1);
     const v=vol*(.6+Math.random()*.8),dr=dir*(.002+Math.random()*.005),ns=(Math.random()-.5)*v;
     const o=b,c=o*(1+dr+ns),h=Math.max(o,c)*(1+Math.random()*v*.4),l=Math.min(o,c)*(1-Math.random()*v*.4);
-    d.push({time:dt.toISOString().split('T')[0],open:+o.toFixed(2),high:+h.toFixed(2),low:+l.toFixed(2),close:+c.toFixed(2),vol:Math.floor(5e5+Math.random()*2e6)});
+    arr.push({time:dt.toISOString().split('T')[0],open:+o.toFixed(2),high:+h.toFixed(2),low:+l.toFixed(2),close:+c.toFixed(2),vol:Math.floor(5e5+Math.random()*2e6)});
     b=c;}};
+  // pre-context: random walk
+  const preDir=Math.random()>.5?1:-1;
+  pushTo(pre,preDir,.012,40+Math.floor(Math.random()*20));
+  pushTo(pre,-preDir*.5,.008,15+Math.floor(Math.random()*10));
+
+  const patStart=pre.length;
+  const d=[...pre];
+  const push=(dir,vol,cnt)=>pushTo(d,dir,vol,cnt);
+
   switch(type){
     case 'double_bottom':push(1,.012,12);push(-1,.018,22);push(1,.01,14);push(-1,.016,20);push(1,.02,25);break;
     case 'double_top':push(-1,.01,8);push(1,.018,22);push(-1,.01,14);push(1,.015,20);push(-1,.022,25);break;
@@ -492,12 +534,18 @@ function genPat(type,len){
     case 'island_rev':push(1,.015,20);push(1,.03,3);push(-1,.003,3);push(-1,.03,3);push(-1,.015,20);break;
     case 'gap_up':push(-1,.01,15);push(-.5,.005,8);b*=1.05;push(1,.015,20);push(1,.008,15);break;
     case 'gap_down':push(1,.01,15);push(.5,.005,8);b*=.95;push(-1,.015,20);push(-1,.008,15);break;
-    case 'morn_star':push(-1,.015,25);const ml=b;push(-1,.03,1);push(.5,.008,1);push(1,.03,1);push(1,.015,20);break;
+    case 'morn_star':push(-1,.015,25);push(-1,.03,1);push(.5,.008,1);push(1,.03,1);push(1,.015,20);break;
     case 'eve_star':push(1,.015,25);push(1,.03,1);push(-.5,.008,1);push(-1,.03,1);push(-1,.015,20);break;
-    case 'hammer':push(-1,.015,25);const hl=b;d.push({time:(()=>{dt.setDate(dt.getDate()+1);return dt.toISOString().split('T')[0];})(),open:+b.toFixed(2),high:+(b*1.005).toFixed(2),low:+(b*.97).toFixed(2),close:+(b*1.003).toFixed(2),vol:3e6});b*=1.003;push(1,.015,22);break;
+    case 'hammer':push(-1,.015,25);d.push({time:(()=>{dt.setDate(dt.getDate()+1);return dt.toISOString().split('T')[0];})(),open:+b.toFixed(2),high:+(b*1.005).toFixed(2),low:+(b*.97).toFixed(2),close:+(b*1.003).toFixed(2),vol:3e6});b*=1.003;push(1,.015,22);break;
     case 'shoot_star':push(1,.015,25);d.push({time:(()=>{dt.setDate(dt.getDate()+1);return dt.toISOString().split('T')[0];})(),open:+b.toFixed(2),high:+(b*1.03).toFixed(2),low:+(b*.995).toFixed(2),close:+(b*.997).toFixed(2),vol:3e6});b*=.997;push(-1,.015,22);break;
   }
-  return d;
+  const patEnd=d.length;
+  // post-context: continuation after pattern
+  const postDir=Math.random()>.5?1:-1;
+  pushTo(d,postDir,.01,30+Math.floor(Math.random()*20));
+  pushTo(d,-postDir*.3,.007,15+Math.floor(Math.random()*10));
+
+  return {data:d, patStart, patEnd};
 }
 
 const PATS=[
@@ -593,9 +641,17 @@ function renderPats(){
       const cv=document.getElementById(`pc${i}`);if(!cv)return;
       const c=new CC(cv,{bg:'#0c1117',svol:true,sma:true,map:[5,20],mac:['#f59e0b','#8b5cf6'],rp:44,bp:20,tp:8});
       c.mnw=1.5;c.mxw=18;
-      const data=genPat(p.id);c.setData(data);
-      c.cw=Math.max(1.5,Math.min(10,(c.W/(c.dpr||1)-44)/data.length));
-      c.toEnd();c.render();patCharts.push(c);
+      const result=genPat(p.id);
+      const zoneColor=p.tp==='bull'?'rgba(34,197,94,.06)':p.tp==='bear'?'rgba(239,68,68,.06)':'rgba(59,130,246,.06)';
+      const zoneBorder=p.tp==='bull'?'rgba(34,197,94,.25)':p.tp==='bear'?'rgba(239,68,68,.25)':'rgba(59,130,246,.25)';
+      c.zones=[{start:result.patStart,end:result.patEnd,color:zoneColor,border:zoneBorder,label:'◀ 패턴 구간 ▶'}];
+      c.setData(result.data);
+      c.cw=Math.max(1.5,Math.min(10,(c.W/(c.dpr||1)-44)/result.data.length));
+      // scroll to center the pattern
+      const patMid=(result.patStart+result.patEnd)/2;
+      const chartW=c.W-44*(c.dpr||1);
+      c.sc=chartW/2-patMid*c.cw*(c.dpr||1);
+      c._clamp();c.render();patCharts.push(c);
     });
   });
 }
@@ -614,6 +670,7 @@ document.getElementById('btn-new').addEventListener('click',startNew);
 document.getElementById('btn-nxt').addEventListener('click',()=>advance(S.spd));
 document.getElementById('btn-buy').addEventListener('click',doBuy);
 document.getElementById('btn-sell').addEventListener('click',doSell);
+document.getElementById('btn-exit').addEventListener('click',()=>{if(S.stk)showResult(false);});
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return;
   if(e.key===' '||e.key==='ArrowRight'){e.preventDefault();if(!document.getElementById('btn-nxt').disabled)advance(S.spd);}
