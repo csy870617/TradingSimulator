@@ -2,8 +2,9 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TradeGym — 주식 트레이닝 시뮬레이터</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TradingSimulator</title>
+<link rel="icon" href="Icon.png" type="image/png">
 <style>
 :root{--b0:#06090f;--b1:#0c1117;--b2:#131a24;--b3:#1a2332;--bd:#1e2d42;--bd2:#2a3f5f;--t1:#e8edf5;--t2:#8899b2;--t3:#4a5d78;--ac:#3b82f6;--acd:rgba(59,130,246,.12);--g:#22c55e;--gd:rgba(34,197,94,.10);--r:#ef4444;--rd:rgba(239,68,68,.10);--y:#eab308;--cy:#06b6d4;}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -186,9 +187,23 @@ class CC{
     });
     c.addEventListener('mouseup',()=>{this.drag=false;});
     c.addEventListener('mouseleave',()=>{this.drag=false;this.ch=null;this.render();});
-    c.addEventListener('touchstart',e=>{this.drag=true;this.lx=e.touches[0].clientX;},{passive:true});
-    c.addEventListener('touchmove',e=>{if(this.drag){this.sc+=e.touches[0].clientX-this.lx;this.lx=e.touches[0].clientX;this._clamp();this.render();}},{passive:true});
-    c.addEventListener('touchend',()=>{this.drag=false;});
+    this.pinch=false;this.pinchDist=0;
+    c.addEventListener('touchstart',e=>{
+      if(e.touches.length===2){this.pinch=true;this.drag=false;this.pinchDist=Math.hypot(e.touches[1].clientX-e.touches[0].clientX,e.touches[1].clientY-e.touches[0].clientY);this.pinchMidX=((e.touches[0].clientX+e.touches[1].clientX)/2-c.getBoundingClientRect().left)*this.dpr;}
+      else if(e.touches.length===1){this.drag=true;this.lx=e.touches[0].clientX;}
+    },{passive:true});
+    c.addEventListener('touchmove',e=>{
+      if(e.touches.length===2&&this.pinch){
+        e.preventDefault();
+        const nd=Math.hypot(e.touches[1].clientX-e.touches[0].clientX,e.touches[1].clientY-e.touches[0].clientY);
+        const f=nd/this.pinchDist;const old=this.cw;
+        this.cw=Math.max(this.mnw,Math.min(this.mxw,this.cw*f));
+        const mx=((e.touches[0].clientX+e.touches[1].clientX)/2-c.getBoundingClientRect().left)*this.dpr;
+        this.sc=mx-(mx-this.sc)*(this.cw/old);this._clamp();this.render();
+        this.pinchDist=nd;
+      }else if(this.drag&&e.touches.length===1){this.sc+=e.touches[0].clientX-this.lx;this.lx=e.touches[0].clientX;this._clamp();this.render();}
+    },{passive:false});
+    c.addEventListener('touchend',e=>{if(e.touches.length<2)this.pinch=false;if(e.touches.length===0)this.drag=false;});
   }
   _rs(){
     const r=this.cv.parentElement.getBoundingClientRect();const d=window.devicePixelRatio||1;this.dpr=d;
@@ -321,27 +336,46 @@ const MKT={
   ]}
 };
 
+const MAX_DATE=new Date(2025,11,31);
+const SPLIT_RATIOS=[2,3,4,5,10];
 function genD(pr,len=1300,startBase,startDt){
   const d=[];let b=startBase||(pr[0]+Math.random()*(pr[1]-pr[0]));
   let dt;
-  if(startDt){dt=new Date(startDt);}else{const sy=2010+Math.floor(Math.random()*11);dt=new Date(sy,Math.floor(Math.random()*12),1);}
+  if(startDt){dt=new Date(startDt);}else{dt=new Date(2010,Math.floor(Math.random()*12),1);}
   let tD=Math.random()>.5?1:-1,tL=30+Math.floor(Math.random()*80),tc=0;
+  let splitCooldown=200;// min candles between splits
   for(let i=0;i<len;i++){
     dt.setDate(dt.getDate()+1);while(dt.getDay()===0||dt.getDay()===6)dt.setDate(dt.getDate()+1);
+    if(dt>MAX_DATE)break;
     if(tc++>=tL){tD=Math.random()>.45?1:-1;tL=20+Math.floor(Math.random()*80);tc=0;}
     const v=.008+Math.random()*.025,dr=tD*(.0005+Math.random()*.002),ch=dr+(Math.random()-.5)*v;
     const o=b,c=o*(1+ch),h=Math.max(o,c)*(1+Math.random()*v*.6),l=Math.min(o,c)*(1-Math.random()*v*.6);
     const r=b>1000?0:2;
-    d.push({time:dt.toISOString().split('T')[0],open:+o.toFixed(r),high:+h.toFixed(r),low:+l.toFixed(r),close:+c.toFixed(r),vol:Math.floor(3e5+Math.random()*4e6)});
-    b=c;if(b<pr[0]*.3)b=pr[0]*.5;if(b>pr[1]*2)b=pr[1]*1.2;
+    const candle={time:dt.toISOString().split('T')[0],open:+o.toFixed(r),high:+h.toFixed(r),low:+l.toFixed(r),close:+c.toFixed(r),vol:Math.floor(3e5+Math.random()*4e6)};
+    // stock split: if price is high and cooldown passed, random chance of split
+    splitCooldown--;
+    if(splitCooldown<=0&&b>pr[1]*1.2&&Math.random()<0.03){
+      const ratio=SPLIT_RATIOS[Math.floor(Math.random()*SPLIT_RATIOS.length)];
+      candle.split=ratio;
+      b=c/ratio;
+      candle.close=+(c/ratio).toFixed(r);candle.open=+(o/ratio).toFixed(r);
+      candle.high=+(h/ratio).toFixed(r);candle.low=+(l/ratio).toFixed(r);
+      splitCooldown=200;
+    }
+    d.push(candle);
+    b=c;if(candle.split)b=candle.close;
+    if(b<pr[0]*.3)b=pr[0]*.5;if(b>pr[1]*2)b=pr[1]*1.2;
   }
   return d;
 }
 
 function extendData(){
   const m=MKT[S.mk];const last=S.rawAll[S.rawAll.length-1];
+  if(new Date(last.time)>=MAX_DATE)return false;
   const more=genD(m.pr,500,last.close,last.time);
+  if(!more.length)return false;
   S.rawAll=S.rawAll.concat(more);
+  return true;
 }
 
 // ═══════════════════════════════════════
@@ -385,14 +419,24 @@ function getVisibleData(){
 
 function startNew(){
   const m=MKT[S.mk];
+  // sell any existing position at current price before switching
+  if(S.pos.q>0&&S.stk){
+    const p=curP();
+    S.cash+=p*S.pos.q;
+    const pnl=(p-S.pos.a)*S.pos.q;
+    if(pnl>0)S.w++;else if(pnl<0)S.l++;
+    S.pos={q:0,a:0};
+  }
   S.stk=m.s[Math.floor(Math.random()*m.s.length)];
   S.rawAll=genD(m.pr,1300);
   // start showing 60% of data, hide rest as "future"
   S.visCntDaily=Math.floor(S.rawAll.length*.55)+Math.floor(Math.random()*100);
-  S.cash=IC;S.pos={q:0,a:0};S.trd=0;S.w=0;S.l=0;S.logs=[];
+  // keep cash (don't reset to IC), only reset on first run
+  if(S.cash===0&&S.trd===0)S.cash=IC;
+  S.logs=[];
   document.getElementById('c-ov').style.display='none';
-  document.getElementById('s-lbl').textContent=S.stk.n;
-  document.getElementById('s-tk').textContent=S.stk.t;
+  document.getElementById('s-lbl').textContent='???';
+  document.getElementById('s-tk').textContent='???';
   if(!chart){chart=new CC(document.getElementById('cv'));}else{chart._rs();}
   chart.mk=[];
   renderChart();updateUI();
@@ -416,8 +460,25 @@ function renderChart(){
 function advance(n=1){
   for(let i=0;i<n;i++){
     // extend data if running out
-    if(S.visCntDaily>=S.rawAll.length-10)extendData();
+    if(S.visCntDaily>=S.rawAll.length-10){
+      if(!extendData()){
+        // no more data (past 2025), auto exit
+        showResult(false);return;
+      }
+    }
+    // safety: don't exceed available data
+    if(S.visCntDaily>=S.rawAll.length){showResult(false);return;}
     S.visCntDaily++;
+    const curCandle=S.rawAll[S.visCntDaily-1];
+    // handle stock split
+    if(curCandle&&curCandle.split&&S.pos.q>0){
+      const ratio=curCandle.split;
+      S.pos.q=S.pos.q*ratio;
+      S.pos.a=S.pos.a/ratio;
+      addLog(`SPLIT 1:${ratio}`,S.pos.q,curCandle.close);
+    }
+    // check if we exceeded the date limit
+    if(curCandle&&new Date(curCandle.time)>=MAX_DATE){showResult(false);return;}
     // bankruptcy check
     const p=curP(),tot=S.cash+S.pos.q*p;
     if(tot<=0){showResult(true);return;}
@@ -425,7 +486,7 @@ function advance(n=1){
   renderChart();updateUI();
 }
 
-function curP(){return S.visCntDaily>0?S.rawAll[S.visCntDaily-1].close:0;}
+function curP(){return S.visCntDaily>0&&S.visCntDaily<=S.rawAll.length?S.rawAll[S.visCntDaily-1].close:0;}
 
 function doBuy(){
   const q=parseInt(document.getElementById('i-qty').value)||0;if(q<=0)return;
@@ -476,6 +537,8 @@ function showResult(bankrupt=false){
   const tr=(S.cash-IC)/IC*100,ip=tr>=0;
   document.getElementById('m-t').textContent=bankrupt?'💀 파산!':ip?'🎉 수익 달성!':'📉 손실 기록';
   document.getElementById('m-s').textContent=`${S.stk.n} (${S.stk.t}) 시뮬레이션 결과`;
+  document.getElementById('s-lbl').textContent=S.stk.n;
+  document.getElementById('s-tk').textContent=S.stk.t;
   const tt=S.w+S.l;
   document.getElementById('m-st').innerHTML=`
     <div class="sr"><span>최종 자산</span><span class="m ${ip?'pos':'neg'}">₩${Math.floor(Math.max(0,S.cash)).toLocaleString()}</span></div>
@@ -677,7 +740,14 @@ document.addEventListener('keydown',e=>{
   if(e.key==='b'||e.key==='B')doBuy();if(e.key==='s'||e.key==='S')doSell();
 });
 document.querySelectorAll('.qb button').forEach(b=>b.addEventListener('click',()=>{
-  const p=curP();if(p<=0)return;document.getElementById('i-qty').value=Math.max(1,Math.floor(S.cash/p*parseInt(b.dataset.p)/100));
+  const p=curP();if(p<=0)return;const pct=parseInt(b.dataset.p);
+  if(S.pos.q>0){
+    // if holding shares, calculate sell quantity based on position
+    document.getElementById('i-qty').value=Math.max(1,Math.floor(S.pos.q*pct/100));
+  }else{
+    // otherwise calculate buy quantity based on cash
+    document.getElementById('i-qty').value=Math.max(1,Math.floor(S.cash/p*pct/100));
+  }
 }));
 document.querySelectorAll('.sb').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.sb').forEach(x=>x.classList.remove('on'));b.classList.add('on');S.spd=parseInt(b.dataset.s);
