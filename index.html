@@ -99,8 +99,8 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
 <main>
   <section class="sec on" id="sec-sim">
     <div class="stats">
-      <div class="sc"><div class="sl">총 자산 <button id="btn-reset" style="font-size:9px;padding:2px 6px;background:var(--rd);color:var(--r);border:1px solid rgba(239,68,68,.2);border-radius:4px;cursor:pointer;margin-left:6px;font-family:inherit;">초기화</button></div><div class="sv" id="v-tot">$10,000,000</div><div class="ss neu" id="v-tot-r">0.00%</div></div>
-      <div class="sc"><div class="sl">현금</div><div class="sv" id="v-cash">$10,000,000</div></div>
+      <div class="sc"><div class="sl">총 자산 <button id="btn-reset" style="font-size:9px;padding:2px 6px;background:var(--rd);color:var(--r);border:1px solid rgba(239,68,68,.2);border-radius:4px;cursor:pointer;margin-left:6px;font-family:inherit;">초기화</button></div><div class="sv" id="v-tot">$10,000</div><div class="ss neu" id="v-tot-r">0.00%</div></div>
+      <div class="sc"><div class="sl">현금</div><div class="sv" id="v-cash">$10,000</div></div>
       <div class="sc"><div class="sl">평가 손익</div><div class="sv neu" id="v-pnl">₩0</div><div class="ss neu" id="v-pnl-r">0.00%</div></div>
       <div class="sc"><div class="sl">보유</div><div class="sv" id="v-qty">0주</div><div class="ss neu" id="v-avg">평단가: —</div></div>
       <div class="sc"><div class="sl">거래</div><div class="sv" id="v-trd">0</div><div class="ss neu" id="v-wr">승률: —</div></div>
@@ -542,7 +542,7 @@ function toMonthly(d){
 // ═══════════════════════════════════════
 // APP STATE
 // ═══════════════════════════════════════
-const IC=10000000;
+const IC=10000;
 const SAVED_CASH=localStorage.getItem('ts_cash');
 let S={mk:'snp',stk:null,rawAll:[],visCntDaily:0,tf:'D',
   cash:SAVED_CASH?parseFloat(SAVED_CASH):IC,pos:{q:0,a:0},trd:0,w:0,l:0,logs:[],spd:1,isRealData:false,stockStartAssets:SAVED_CASH?parseFloat(SAVED_CASH):IC};
@@ -943,7 +943,7 @@ document.querySelectorAll('.tf-btn').forEach(b=>b.addEventListener('click',()=>{
 }));
 // Reset total assets
 document.getElementById('btn-reset').addEventListener('click',()=>{
-  if(!confirm('총 자산을 $10,000,000으로 초기화하시겠습니까?'))return;
+  if(!confirm('총 자산을 $10,000으로 초기화하시겠습니까?'))return;
   S.cash=IC;S.pos={q:0,a:0};S.trd=0;S.w=0;S.l=0;S.logs=[];S.stockStartAssets=IC;
   localStorage.setItem('ts_cash',IC.toString());
   updateUI();renderLogs();
