@@ -99,8 +99,8 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
 <main>
   <section class="sec on" id="sec-sim">
     <div class="stats">
-      <div class="sc"><div class="sl">총 자산</div><div class="sv" id="v-tot">₩10,000,000</div><div class="ss neu" id="v-tot-r">0.00%</div></div>
-      <div class="sc"><div class="sl">현금</div><div class="sv" id="v-cash">₩10,000,000</div></div>
+      <div class="sc"><div class="sl">총 자산 <button id="btn-reset" style="font-size:9px;padding:2px 6px;background:var(--rd);color:var(--r);border:1px solid rgba(239,68,68,.2);border-radius:4px;cursor:pointer;margin-left:6px;font-family:inherit;">초기화</button></div><div class="sv" id="v-tot">$10,000,000</div><div class="ss neu" id="v-tot-r">0.00%</div></div>
+      <div class="sc"><div class="sl">현금</div><div class="sv" id="v-cash">$10,000,000</div></div>
       <div class="sc"><div class="sl">평가 손익</div><div class="sv neu" id="v-pnl">₩0</div><div class="ss neu" id="v-pnl-r">0.00%</div></div>
       <div class="sc"><div class="sl">보유</div><div class="sv" id="v-qty">0주</div><div class="ss neu" id="v-avg">평단가: —</div></div>
       <div class="sc"><div class="sl">거래</div><div class="sv" id="v-trd">0</div><div class="ss neu" id="v-wr">승률: —</div></div>
@@ -130,6 +130,7 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
             <span><svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#f59e0b" stroke-width="2"/></svg>MA5</span>
             <span><svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#8b5cf6" stroke-width="2"/></svg>MA20</span>
             <span><svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#ec4899" stroke-width="2"/></svg>MA60</span>
+            <span><svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#06b6d4" stroke-width="2"/></svg>MA120</span>
           </div>
           <span class="m" style="font-size:14px;font-weight:700;" id="p-disp">—</span>
         </div>
@@ -173,7 +174,7 @@ class CC{
   constructor(cv,o={}){
     this.cv=cv;this.cx=cv.getContext('2d');this.d=[];this.mk=[];this.zones=[];
     this.o={bg:'#0c1117',gc:'rgba(30,45,66,.45)',uc:'#22c55e',dc:'#ef4444',tc:'#4a5d78',
-      mac:['#f59e0b','#8b5cf6','#ec4899'],map:[5,20,60],sma:true,svol:true,rp:58,bp:26,tp:12,...o};
+      mac:['#f59e0b','#8b5cf6','#ec4899','#06b6d4'],map:[5,20,60,120],sma:true,svol:true,rp:58,bp:26,tp:12,...o};
     this.sc=0;this.cw=7;this.mnw=1.5;this.mxw=28;this.drag=false;this.lx=0;this.ch=null;
     this._bindEvents();this._rs();
   }
@@ -542,8 +543,9 @@ function toMonthly(d){
 // APP STATE
 // ═══════════════════════════════════════
 const IC=10000000;
+const SAVED_CASH=localStorage.getItem('ts_cash');
 let S={mk:'snp',stk:null,rawAll:[],visCntDaily:0,tf:'D',
-  cash:IC,pos:{q:0,a:0},trd:0,w:0,l:0,logs:[],spd:1,isRealData:false};
+  cash:SAVED_CASH?parseFloat(SAVED_CASH):IC,pos:{q:0,a:0},trd:0,w:0,l:0,logs:[],spd:1,isRealData:false,stockStartAssets:SAVED_CASH?parseFloat(SAVED_CASH):IC};
 let chart=null;
 
 function getVisibleData(){
@@ -597,6 +599,7 @@ async function startNew(){
   S.visCntDaily=Math.floor(S.rawAll.length*.55)+Math.floor(Math.random()*Math.min(100,S.rawAll.length*.1));
   // keep cash (don't reset to IC), only reset on first run
   if(S.cash===0&&S.trd===0)S.cash=IC;
+  S.stockStartAssets=S.cash;
   S.logs=[];
   document.getElementById('c-ov').style.display='none';
   document.getElementById('s-lbl').textContent='???';
@@ -695,7 +698,7 @@ function renderLogs(){
 function updateUI(){
   const p=curP(),ev=S.pos.q*p,tot=S.cash+ev,tr=(tot-IC)/IC*100;
   const upnl=S.pos.q>0?(p-S.pos.a)*S.pos.q:0,upct=S.pos.a>0?(p-S.pos.a)/S.pos.a*100:0;
-  const f=v=>`₩${Math.floor(v).toLocaleString()}`;
+  const f=v=>`$${Math.floor(v).toLocaleString()}`;
   document.getElementById('v-tot').textContent=f(tot);
   const tre=document.getElementById('v-tot-r');tre.textContent=`${tr>=0?'+':''}${tr.toFixed(2)}%`;tre.className=`ss ${tr>=0?'pos':'neg'}`;
   document.getElementById('v-cash').textContent=f(S.cash);
@@ -706,19 +709,23 @@ function updateUI(){
   document.getElementById('v-avg').textContent=`평단가: ${as}`;
   document.getElementById('v-trd').textContent=S.trd;
   const tt=S.w+S.l;document.getElementById('v-wr').textContent=tt>0?`승률: ${(S.w/tt*100).toFixed(0)}%`:'승률: —';
+  localStorage.setItem('ts_cash',S.cash.toString());
 }
 
 function showResult(bankrupt=false){
   if(S.pos.q>0){const p=curP();S.cash+=p*S.pos.q;const pnl=(p-S.pos.a)*S.pos.q;if(pnl>0)S.w++;else if(pnl<0)S.l++;S.pos={q:0,a:0};}
-  const tr=(S.cash-IC)/IC*100,ip=tr>=0;
+  const stockProfit=S.cash-S.stockStartAssets;
+  const stockReturn=S.stockStartAssets>0?(stockProfit/S.stockStartAssets*100):0;
+  const ip=stockProfit>=0;
+  localStorage.setItem('ts_cash',S.cash.toString());
   document.getElementById('m-t').textContent=bankrupt?'💀 파산!':ip?'🎉 수익 달성!':'📉 손실 기록';
   document.getElementById('m-s').textContent=`${S.stk.n} (${S.stk.t}) 시뮬레이션 결과`;
   document.getElementById('s-lbl').textContent=S.stk.n;
   document.getElementById('s-tk').textContent=S.stk.t;
   const tt=S.w+S.l;
   document.getElementById('m-st').innerHTML=`
-    <div class="sr"><span>최종 자산</span><span class="m ${ip?'pos':'neg'}">₩${Math.floor(Math.max(0,S.cash)).toLocaleString()}</span></div>
-    <div class="sr"><span>수익률</span><span class="m ${ip?'pos':'neg'}">${tr>=0?'+':''}${tr.toFixed(2)}%</span></div>
+    <div class="sr"><span>수익</span><span class="m ${ip?'pos':'neg'}">${stockProfit>=0?'+':''}$${Math.floor(Math.abs(stockProfit)).toLocaleString()}${stockProfit<0?' (손실)':''}</span></div>
+    <div class="sr"><span>수익률</span><span class="m ${ip?'pos':'neg'}">${stockReturn>=0?'+':''}${stockReturn.toFixed(2)}%</span></div>
     <div class="sr"><span>총 거래</span><span class="m">${S.trd}회</span></div>
     <div class="sr"><span>승률</span><span class="m">${tt>0?(S.w/tt*100).toFixed(0):'—'}%</span></div>
     ${bankrupt?'<div class="sr" style="color:var(--r);font-weight:700;">⚠️ 총 자산이 0 이하로 파산했습니다</div>':''}`;
@@ -934,6 +941,21 @@ document.querySelectorAll('.tf-btn').forEach(b=>b.addEventListener('click',()=>{
   S.tf=b.dataset.tf;
   if(chart&&S.rawAll.length){chart.mk=[];renderChart();updateUI();}
 }));
+// Reset total assets
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  if(!confirm('총 자산을 $10,000,000으로 초기화하시겠습니까?'))return;
+  S.cash=IC;S.pos={q:0,a:0};S.trd=0;S.w=0;S.l=0;S.logs=[];S.stockStartAssets=IC;
+  localStorage.setItem('ts_cash',IC.toString());
+  updateUI();renderLogs();
+});
+// Initialize display with saved cash
+if(SAVED_CASH){
+  const sv=parseFloat(SAVED_CASH);
+  document.getElementById('v-tot').textContent=`$${Math.floor(sv).toLocaleString()}`;
+  document.getElementById('v-cash').textContent=`$${Math.floor(sv).toLocaleString()}`;
+  const tr=(sv-IC)/IC*100;
+  const tre=document.getElementById('v-tot-r');tre.textContent=`${tr>=0?'+':''}${tr.toFixed(2)}%`;tre.className=`ss ${tr>=0?'pos':'neg'}`;
+}
 // Resize
 window.addEventListener('resize',()=>{if(chart){chart._rs();chart.render();}});
 </script>
