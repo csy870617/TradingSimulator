@@ -275,9 +275,24 @@ class CC{
         if(!st){cx.moveTo(x,y);st=true;}else cx.lineTo(x,y);}cx.stroke();});
     // markers
     for(const m of this.mk){if(m.i<si||m.i>=ei)continue;const x=iX(m.i)+cw/2,v=d[m.i],ib=m.t==='buy';
-      const y=ib?pY(v.low)+12*dpr:pY(v.high)-12*dpr;cx.fillStyle=ib?o.uc:o.dc;cx.beginPath();
-      if(ib){cx.moveTo(x,y-7*dpr);cx.lineTo(x-4*dpr,y);cx.lineTo(x+4*dpr,y);}
-      else{cx.moveTo(x,y+7*dpr);cx.lineTo(x-4*dpr,y);cx.lineTo(x+4*dpr,y);}cx.fill();}
+      const y=ib?pY(v.low)+18*dpr:pY(v.high)-18*dpr;
+      const sz=10*dpr,hsz=6*dpr;
+      // glow
+      cx.save();cx.shadowColor=ib?'rgba(34,197,94,.7)':'rgba(239,68,68,.7)';cx.shadowBlur=12*dpr;
+      // triangle path
+      cx.beginPath();
+      if(ib){cx.moveTo(x,y-sz);cx.lineTo(x-hsz,y);cx.lineTo(x+hsz,y);}
+      else{cx.moveTo(x,y+sz);cx.lineTo(x-hsz,y);cx.lineTo(x+hsz,y);}
+      cx.closePath();cx.fillStyle=ib?o.uc:o.dc;cx.fill();
+      // outline
+      cx.shadowBlur=0;cx.strokeStyle='#fff';cx.lineWidth=1.5*dpr;cx.stroke();
+      cx.restore();
+      // label circle
+      const ly=ib?y+8*dpr:y-8*dpr;
+      cx.beginPath();cx.arc(x,ly,7*dpr,0,Math.PI*2);cx.fillStyle=ib?o.uc:o.dc;cx.fill();
+      cx.strokeStyle='#fff';cx.lineWidth=1*dpr;cx.stroke();
+      cx.fillStyle='#fff';cx.font=`bold ${8*dpr}px Menlo,Consolas,monospace`;cx.textAlign='center';cx.textBaseline='middle';
+      cx.fillText(ib?'B':'S',x,ly);}
     // crosshair
     if(this.ch&&this.ch.x<cW){const{x,y}=this.ch;
       cx.strokeStyle='rgba(59,130,246,.3)';cx.lineWidth=dpr;cx.setLineDash([4*dpr,4*dpr]);
