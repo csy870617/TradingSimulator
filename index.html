@@ -49,6 +49,8 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
 .ccw canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
 .ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--b1);z-index:5;gap:10px;}
 .ov .ic{font-size:36px;opacity:.3;}.ov p{color:var(--t3);font-size:13px;}
+.ov .spinner{width:36px;height:36px;border:3px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
 .tp{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
 .tc{background:var(--b2);border:1px solid var(--bd);border-radius:9px;padding:13px 15px;}
 .tc h3{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px;}
@@ -401,47 +403,54 @@ const MKT={
   ]}
 };
 
-const MAX_DATE=new Date(2030,11,31);
-const SPLIT_RATIOS=[2,3,4,5,10];
+const MAX_DATE=new Date(2025,11,31);
 function fmtDt(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+dd;}
-function genD(pr,len=1300,startBase,startDt){
-  const d=[];let b=startBase||(pr[0]+Math.random()*(pr[1]-pr[0]));
-  let dt;
-  if(startDt){dt=new Date(startDt);}else{dt=new Date(2010,Math.floor(Math.random()*12),1);}
-  let tD=Math.random()>.5?1:-1,tL=30+Math.floor(Math.random()*80),tc=0;
-  let splitCooldown=200;// min candles between splits
-  for(let i=0;i<len;i++){
-    dt.setDate(dt.getDate()+1);while(dt.getDay()===0||dt.getDay()===6)dt.setDate(dt.getDate()+1);
-    if(dt>MAX_DATE)break;
-    if(tc++>=tL){tD=Math.random()>.45?1:-1;tL=20+Math.floor(Math.random()*80);tc=0;}
-    const v=.008+Math.random()*.025,dr=tD*(.0005+Math.random()*.002),ch=dr+(Math.random()-.5)*v;
-    const o=b,c=o*(1+ch),h=Math.max(o,c)*(1+Math.random()*v*.6),l=Math.min(o,c)*(1-Math.random()*v*.6);
-    const r=b>1000?0:2;
-    const candle={time:fmtDt(dt),open:+o.toFixed(r),high:+h.toFixed(r),low:+l.toFixed(r),close:+c.toFixed(r),vol:Math.floor(3e5+Math.random()*4e6)};
-    // stock split: if price is high and cooldown passed, random chance of split
-    splitCooldown--;
-    if(splitCooldown<=0&&b>pr[1]*1.2&&Math.random()<0.03){
-      const ratio=SPLIT_RATIOS[Math.floor(Math.random()*SPLIT_RATIOS.length)];
-      candle.split=ratio;
-      b=c/ratio;
-      candle.close=+(c/ratio).toFixed(r);candle.open=+(o/ratio).toFixed(r);
-      candle.high=+(h/ratio).toFixed(r);candle.low=+(l/ratio).toFixed(r);
-      splitCooldown=200;
-    }
-    d.push(candle);
-    b=c;if(candle.split)b=candle.close;
-    if(b<pr[0]*.3)b=pr[0]*.5;if(b>pr[1]*2)b=pr[1]*1.2;
-  }
-  return d;
+function fmtDtUTC(d){const y=d.getUTCFullYear(),m=String(d.getUTCMonth()+1).padStart(2,'0'),dd=String(d.getUTCDate()).padStart(2,'0');return y+'-'+m+'-'+dd;}
+
+function getYahooTicker(t,mk){
+  if(mk==='kos')return t+'.KS';
+  if(mk==='kosd')return t+'.KQ';
+  return t;
 }
 
-function extendData(){
-  const m=MKT[S.mk];const last=S.rawAll[S.rawAll.length-1];
-  if(parseDt(last.time)>=MAX_DATE)return false;
-  const more=genD(m.pr,500,last.close,last.time);
-  if(!more.length)return false;
-  S.rawAll=S.rawAll.concat(more);
-  return true;
+async function fetchReal(ticker,mk){
+  const sym=getYahooTicker(ticker,mk);
+  const p1=Math.floor(new Date(2010,0,1).getTime()/1000);
+  const p2=Math.floor(MAX_DATE.getTime()/1000);
+  const base=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?period1=${p1}&period2=${p2}&interval=1d&includeAdjustedClose=true`;
+  const proxies=[
+    url=>`https://corsproxy.io/?${encodeURIComponent(url)}`,
+    url=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  ];
+  let data=null;
+  try{const r=await fetch(base);if(r.ok)data=await r.json();}catch(e){}
+  if(!data){
+    for(const px of proxies){
+      try{const r=await fetch(px(base));if(r.ok){data=await r.json();break;}}catch(e){}
+    }
+  }
+  if(!data||!data.chart||!data.chart.result||!data.chart.result[0])throw new Error('데이터를 불러올 수 없습니다');
+  const res=data.chart.result[0];
+  const ts=res.timestamp;
+  const q=res.indicators.quote[0];
+  if(!ts||!q)throw new Error('데이터가 비어있습니다');
+  const isKr=mk==='kos'||mk==='kosd';
+  const r=isKr?0:2;
+  const candles=[];
+  for(let i=0;i<ts.length;i++){
+    if(q.open[i]==null||q.close[i]==null||q.high[i]==null||q.low[i]==null)continue;
+    const dt=new Date(ts[i]*1000);
+    const day=dt.getUTCDay();
+    if(day===0||day===6)continue;
+    candles.push({
+      time:fmtDtUTC(dt),
+      open:+q.open[i].toFixed(r),high:+q.high[i].toFixed(r),
+      low:+q.low[i].toFixed(r),close:+q.close[i].toFixed(r),
+      vol:q.volume[i]||0
+    });
+  }
+  if(!candles.length)throw new Error('유효한 데이터가 없습니다');
+  return candles;
 }
 
 // ═══════════════════════════════════════
@@ -485,7 +494,7 @@ function getVisibleData(){
   return daily;
 }
 
-function startNew(){
+async function startNew(){
   const m=MKT[S.mk];
   // sell any existing position at current price before switching
   if(S.pos.q>0&&S.stk){
@@ -496,13 +505,25 @@ function startNew(){
     S.pos={q:0,a:0};
   }
   S.stk=m.s[Math.floor(Math.random()*m.s.length)];
-  S.rawAll=genD(m.pr,1300);
-  // start showing 60% of data, hide rest as "future"
-  S.visCntDaily=Math.floor(S.rawAll.length*.55)+Math.floor(Math.random()*100);
+  // show loading
+  const ov=document.getElementById('c-ov');
+  ov.innerHTML='<div class="spinner"></div><p>실제 주가 데이터를 불러오는 중...</p>';
+  ov.style.display='';
+  document.getElementById('btn-new').disabled=true;
+  try{
+    S.rawAll=await fetchReal(S.stk.t,S.mk);
+  }catch(e){
+    ov.innerHTML='<div class="ic">⚠️</div><p>데이터 로드 실패: '+e.message+'</p><p style="font-size:11px;color:var(--t3);">다시 시도해주세요</p>';
+    document.getElementById('btn-new').disabled=false;
+    return;
+  }
+  document.getElementById('btn-new').disabled=false;
+  // start showing 55% of data, hide rest as "future"
+  S.visCntDaily=Math.floor(S.rawAll.length*.55)+Math.floor(Math.random()*Math.min(100,S.rawAll.length*.1));
   // keep cash (don't reset to IC), only reset on first run
   if(S.cash===0&&S.trd===0)S.cash=IC;
   S.logs=[];
-  document.getElementById('c-ov').style.display='none';
+  ov.style.display='none';
   document.getElementById('s-lbl').textContent='???';
   document.getElementById('s-tk').textContent='???';
   if(!chart){chart=new CC(document.getElementById('cv'));}else{chart._rs();}
@@ -526,17 +547,9 @@ function renderChart(){
 }
 
 function advanceOneDaily(){
-  // extend data if running out
-  if(S.visCntDaily>=S.rawAll.length-10){extendData();}
   if(S.visCntDaily>=S.rawAll.length){showResult(false);return false;}
   S.visCntDaily++;
   const curCandle=S.rawAll[S.visCntDaily-1];
-  if(curCandle&&curCandle.split&&S.pos.q>0){
-    const ratio=curCandle.split;
-    S.pos.q=S.pos.q*ratio;
-    S.pos.a=S.pos.a/ratio;
-    addLog(`SPLIT 1:${ratio}`,S.pos.q,curCandle.close);
-  }
   if(curCandle&&parseDt(curCandle.time)>=MAX_DATE){showResult(false);return false;}
   const p=curP(),tot=S.cash+S.pos.q*p;
   if(tot<=0){showResult(true);return false;}
