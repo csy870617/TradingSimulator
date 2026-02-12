@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>TradingSimulator</title>
-<link rel="icon" href="Icon.png" type="image/png">
+<link rel="icon" href="icon.png" type="image/png">
 <style>
 :root{--b0:#06090f;--b1:#0c1117;--b2:#131a24;--b3:#1a2332;--bd:#1e2d42;--bd2:#2a3f5f;--t1:#e8edf5;--t2:#8899b2;--t3:#4a5d78;--ac:#3b82f6;--acd:rgba(59,130,246,.12);--g:#22c55e;--gd:rgba(34,197,94,.10);--r:#ef4444;--rd:rgba(239,68,68,.10);--y:#eab308;--cy:#06b6d4;}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -89,7 +89,7 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
 </head>
 <body>
 <header>
-  <div class="logo"><div class="logo-i">TG</div>TradeGym</div>
+  <div class="logo"><img src="icon.png" alt="logo" style="width:30px;height:30px;border-radius:7px;">TradingSimulator</div>
   <div class="tabs">
     <button class="tab on" data-t="sim">시뮬레이터</button>
     <button class="tab" data-t="pat">패턴 학습</button>
@@ -457,31 +457,41 @@ function renderChart(){
   el.style.color=last.close>=prev?'var(--g)':'var(--r)';
 }
 
+function advanceOneDaily(){
+  // extend data if running out
+  if(S.visCntDaily>=S.rawAll.length-10){
+    if(!extendData()){showResult(false);return false;}
+  }
+  if(S.visCntDaily>=S.rawAll.length){showResult(false);return false;}
+  S.visCntDaily++;
+  const curCandle=S.rawAll[S.visCntDaily-1];
+  if(curCandle&&curCandle.split&&S.pos.q>0){
+    const ratio=curCandle.split;
+    S.pos.q=S.pos.q*ratio;
+    S.pos.a=S.pos.a/ratio;
+    addLog(`SPLIT 1:${ratio}`,S.pos.q,curCandle.close);
+  }
+  if(curCandle&&new Date(curCandle.time)>=MAX_DATE){showResult(false);return false;}
+  const p=curP(),tot=S.cash+S.pos.q*p;
+  if(tot<=0){showResult(true);return false;}
+  return true;
+}
+
 function advance(n=1){
   for(let i=0;i<n;i++){
-    // extend data if running out
-    if(S.visCntDaily>=S.rawAll.length-10){
-      if(!extendData()){
-        // no more data (past 2025), auto exit
-        showResult(false);return;
+    if(S.tf==='D'){
+      if(!advanceOneDaily())return;
+    }else{
+      // For weekly/monthly: advance until a new aggregated candle appears
+      const before=getVisibleData().length;
+      let ok=true;
+      while(ok){
+        ok=advanceOneDaily();
+        if(!ok)break;
+        if(getVisibleData().length>before)break;
       }
+      if(!ok&&getVisibleData().length<=before)return;
     }
-    // safety: don't exceed available data
-    if(S.visCntDaily>=S.rawAll.length){showResult(false);return;}
-    S.visCntDaily++;
-    const curCandle=S.rawAll[S.visCntDaily-1];
-    // handle stock split
-    if(curCandle&&curCandle.split&&S.pos.q>0){
-      const ratio=curCandle.split;
-      S.pos.q=S.pos.q*ratio;
-      S.pos.a=S.pos.a/ratio;
-      addLog(`SPLIT 1:${ratio}`,S.pos.q,curCandle.close);
-    }
-    // check if we exceeded the date limit
-    if(curCandle&&new Date(curCandle.time)>=MAX_DATE){showResult(false);return;}
-    // bankruptcy check
-    const p=curP(),tot=S.cash+S.pos.q*p;
-    if(tot<=0){showResult(true);return;}
   }
   renderChart();updateUI();
 }
