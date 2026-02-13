@@ -87,6 +87,13 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
 ::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px;}
 .bat-bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--ac),var(--cy));z-index:999;transition:width .3s linear;}
 .bat-bar.warn{background:linear-gradient(90deg,var(--y),var(--r));}
+.bat-sim-timer{position:absolute;top:10px;right:10px;z-index:10;background:rgba(6,9,15,.88);border:1px solid var(--bd);border-radius:10px;padding:8px 14px;display:none;align-items:center;gap:10px;backdrop-filter:blur(8px);min-width:120px;}
+.bat-sim-timer.on{display:flex;}
+.bat-sim-timer .bst-icon{font-size:16px;}
+.bat-sim-timer .bst-time{font-family:Menlo,Consolas,'DejaVu Sans Mono',monospace;font-size:20px;font-weight:700;color:var(--t1);letter-spacing:1px;}
+.bat-sim-timer .bst-label{font-size:9px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+.bat-sim-timer.warn .bst-time{color:var(--r);animation:batTimerBlink 1s ease-in-out infinite;}
+@keyframes batTimerBlink{0%,100%{opacity:1;}50%{opacity:.5;}}
 .bat-alert{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(6,9,15,.95);border:2px solid var(--r);border-radius:16px;padding:32px 48px;z-index:300;text-align:center;animation:batPulse .5s ease-in-out;}
 @keyframes batPulse{0%{transform:translate(-50%,-50%) scale(.8);opacity:0;}100%{transform:translate(-50%,-50%) scale(1);opacity:1;}}
 @media(max-width:768px){header{padding:8px 12px;flex-wrap:wrap;gap:6px;}main{padding:10px 12px;}.stats{grid-template-columns:repeat(2,1fr);}.tp{grid-template-columns:1fr;}.ccw{height:340px;}.cr{gap:5px;}.btn{padding:7px 12px;font-size:12px;}.pg{grid-template-columns:1fr;}}
@@ -145,6 +152,7 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
       <div class="ccw" id="chart-area">
         <canvas id="cv"></canvas>
         <div class="ov" id="c-ov"><div class="ic">📈</div><p>🎲 새 종목을 클릭하여 시작하세요</p></div>
+        <div class="bat-sim-timer" id="bat-sim-timer"><div class="bst-icon">⏱</div><div><div class="bst-time" id="bst-time">00:00</div><div class="bst-label">대결 타이머</div></div></div>
       </div>
     </div>
     <div class="tp">
@@ -1114,6 +1122,9 @@ let BAT={totalSec:0,remainSec:0,interval:null,running:false,barEl:null};
 function batFmt(sec){const m=Math.floor(sec/60),s=sec%60;return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;}
 function batUpdateDisplay(){
   document.getElementById('bat-timer-val').textContent=batFmt(BAT.remainSec);
+  document.getElementById('bst-time').textContent=batFmt(BAT.remainSec);
+  const simTimer=document.getElementById('bat-sim-timer');
+  if(BAT.remainSec<=30&&BAT.running)simTimer.classList.add('warn');else simTimer.classList.remove('warn');
   if(BAT.barEl){
     const pct=BAT.totalSec>0?((BAT.remainSec/BAT.totalSec)*100):0;
     BAT.barEl.style.width=pct+'%';
@@ -1138,6 +1149,8 @@ function batStart(){
   document.getElementById('bat-stop').disabled=false;
   document.getElementById('bat-timer-status').textContent='진행 중...';
   document.getElementById('bat-timer-status').style.color='var(--g)';
+  document.getElementById('bat-sim-timer').classList.add('on');
+  document.getElementById('bat-sim-timer').classList.remove('warn');
   // Switch to simulator tab
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('.sec').forEach(x=>x.classList.remove('on'));
@@ -1163,6 +1176,9 @@ function batTimeUp(){
   document.getElementById('bat-timer-status').textContent='시간 종료!';
   document.getElementById('bat-timer-status').style.color='var(--r)';
   if(BAT.barEl){BAT.barEl.style.width='0%';}
+  document.getElementById('bst-time').textContent='00:00';
+  // Hide sim timer after a short delay so user sees 00:00
+  setTimeout(()=>{document.getElementById('bat-sim-timer').classList.remove('on','warn');},3000);
   // Show result if stock is active
   if(S.stk&&!document.getElementById('btn-nxt').disabled){showResult(false);}
   // Show time-up alert
@@ -1179,6 +1195,7 @@ function batStop(){
   document.getElementById('bat-timer-status').textContent='중지됨';
   document.getElementById('bat-timer-status').style.color='var(--y)';
   if(BAT.barEl){BAT.barEl.remove();BAT.barEl=null;}
+  document.getElementById('bat-sim-timer').classList.remove('on','warn');
 }
 function batReset(){
   batStop();BAT.totalSec=0;BAT.remainSec=0;
