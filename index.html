@@ -717,7 +717,10 @@ function advanceOneDaily(){
     if(S.pos.q>0||S.shortPos.q>0)addLog(`SPLIT 1:${ratio}`,S.pos.q+S.shortPos.q,curCandle.close);
   }
   if(curCandle&&parseDt(curCandle.time)>=MAX_DATE){showResult(false);return false;}
-  const p=curP(),tot=S.cash+S.pos.q*p;
+  const p=curP();
+  const longLev=S.pos.lev||1;const longBasePnl=S.pos.q>0?(p-S.pos.a)*S.pos.q:0;const longEv=S.pos.q>0?S.pos.a*S.pos.q+longBasePnl*longLev:0;
+  const shortLev=S.shortPos.lev||1;const shortBasePnl=S.shortPos.q>0?(S.shortPos.a-p)*S.shortPos.q:0;const shortEv=S.shortPos.q>0?S.shortPos.a*S.shortPos.q+shortBasePnl*shortLev:0;
+  const tot=S.cash+longEv+shortEv;
   if(tot<=0){showResult(true);return false;}
   return true;
 }
@@ -837,9 +840,9 @@ function updateUI(){
 }
 
 function showResult(bankrupt=false){
-  if(S.pos.q>0){const p=curP();S.cash+=p*S.pos.q;const pnl=(p-S.pos.a)*S.pos.q;if(pnl>0)S.w++;else if(pnl<0)S.l++;S.pos={q:0,a:0};}
+  if(S.pos.q>0){const p=curP();const lev=S.pos.lev||1;const basePnl=(p-S.pos.a)*S.pos.q;const levPnl=basePnl*lev;S.cash+=S.pos.a*S.pos.q+levPnl;if(levPnl>0)S.w++;else if(levPnl<0)S.l++;S.pos={q:0,a:0};}
   // close short position
-  if(S.shortPos.q>0){const p=curP();const pnl=(S.shortPos.a-p)*S.shortPos.q;S.cash+=S.shortPos.a*S.shortPos.q+pnl;if(pnl>0)S.w++;else if(pnl<0)S.l++;S.shortPos={q:0,a:0};}
+  if(S.shortPos.q>0){const p=curP();const lev=S.shortPos.lev||1;const basePnl=(S.shortPos.a-p)*S.shortPos.q;const levPnl=basePnl*lev;S.cash+=S.shortPos.a*S.shortPos.q+levPnl;if(levPnl>0)S.w++;else if(levPnl<0)S.l++;S.shortPos={q:0,a:0};}
   const stockProfit=S.cash-S.stockStartAssets;
   const stockReturn=S.stockStartAssets>0?(stockProfit/S.stockStartAssets*100):0;
   const ip=stockProfit>=0;
