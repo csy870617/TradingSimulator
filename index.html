@@ -114,7 +114,7 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
     <div class="stats">
       <div class="sc"><div class="sl">총 자산 <button id="btn-reset" style="font-size:9px;padding:2px 6px;background:var(--rd);color:var(--r);border:1px solid rgba(239,68,68,.2);border-radius:4px;cursor:pointer;margin-left:6px;font-family:inherit;">초기화</button></div><div class="sv" id="v-tot">$10,000</div><div class="ss neu" id="v-tot-r">0.00%</div></div>
       <div class="sc"><div class="sl">현금</div><div class="sv" id="v-cash">$10,000</div></div>
-      <div class="sc"><div class="sl">평가 손익</div><div class="sv neu" id="v-pnl">₩0</div><div class="ss neu" id="v-pnl-r">0.00%</div></div>
+      <div class="sc"><div class="sl">평가 손익</div><div class="sv neu" id="v-pnl">$0</div><div class="ss neu" id="v-pnl-r">0.00%</div></div>
       <div class="sc"><div class="sl">롱 보유</div><div class="sv" id="v-qty">0주</div><div class="ss neu" id="v-avg">평단가: —</div></div>
       <div class="sc"><div class="sl">숏 보유</div><div class="sv" id="v-sq">0주</div><div class="ss neu" id="v-sa">평단가: —</div></div>
       <div class="sc"><div class="sl">거래</div><div class="sv" id="v-trd">0</div><div class="ss neu" id="v-wr">승률: —</div></div>
@@ -240,6 +240,7 @@ class CC{
     this.o={bg:'#0c1117',gc:'rgba(30,45,66,.45)',uc:'#22c55e',dc:'#ef4444',tc:'#4a5d78',
       mac:['#f59e0b','#8b5cf6','#ec4899','#06b6d4'],map:[5,20,60,120],sma:true,svol:true,rp:58,bp:26,tp:12,...o};
     this.sc=0;this.cw=7;this.mnw=1.5;this.mxw=28;this.drag=false;this.lx=0;this.ch=null;this.hideDates=false;
+    this.dpr=window.devicePixelRatio||1;this.W=0;this.H=0;
     this._bindEvents();this._rs();
   }
   _bindEvents(){
@@ -271,7 +272,9 @@ class CC{
     c.addEventListener('touchend',e=>{if(e.touches.length<2)this.pinch=false;if(e.touches.length===0)this.drag=false;});
   }
   _rs(){
-    const r=this.cv.parentElement.getBoundingClientRect();const d=window.devicePixelRatio||1;this.dpr=d;
+    const r=this.cv.parentElement.getBoundingClientRect();
+    if(r.width===0||r.height===0)return; // hidden tab: keep previous canvas size
+    const d=window.devicePixelRatio||1;this.dpr=d;
     this.cv.width=r.width*d;this.cv.height=r.height*d;this.cv.style.width=r.width+'px';this.cv.style.height=r.height+'px';
     this.W=r.width*d;this.H=r.height*d;
   }
@@ -499,7 +502,10 @@ async function fetchRealData(ticker, market){
 
   for(const fetchUrl of proxyUrls){
     try{
-      const resp=await fetch(fetchUrl,{signal:AbortSignal.timeout(10000)});
+      let signal;
+      try{signal=AbortSignal.timeout(10000);}
+      catch(e){const ctl=new AbortController();setTimeout(()=>ctl.abort(),10000);signal=ctl.signal;}
+      const resp=await fetch(fetchUrl,{signal});
       if(!resp.ok) continue;
       const data=await resp.json();
       const candles=parseYahooData(data, market);
@@ -609,10 +615,11 @@ function toMonthly(d){
 // APP STATE
 // ═══════════════════════════════════════
 const IC=10000;
-const SAVED_CASH=localStorage.getItem('ts_cash');
+const SAVED_RAW=localStorage.getItem('ts_cash');
+const SAVED_CASH=(SAVED_RAW!==null&&isFinite(parseFloat(SAVED_RAW)))?parseFloat(SAVED_RAW):null;
 let S={mk:'snp',stk:null,rawAll:[],visCntDaily:0,tf:'D',
-  cash:SAVED_CASH?parseFloat(SAVED_CASH):IC,pos:{q:0,a:0},trd:0,w:0,l:0,logs:[],spd:1,isRealData:false,stockStartAssets:SAVED_CASH?parseFloat(SAVED_CASH):IC,
-  startDateIdx:0,shortPos:{q:0,a:0},leverage:1};
+  cash:SAVED_CASH!==null?SAVED_CASH:IC,pos:{q:0,a:0},trd:0,w:0,l:0,logs:[],spd:1,isRealData:false,stockStartAssets:SAVED_CASH!==null?SAVED_CASH:IC,
+  startDateIdx:0,shortPos:{q:0,a:0},leverage:1,ended:true};
 let chart=null;
 
 function getVisibleData(){
@@ -651,7 +658,8 @@ async function startNew(){
   S.stk=m.s[Math.floor(Math.random()*m.s.length)];
 
   // Disable buttons during loading
-  document.getElementById('btn-new').disabled=true;
+  S.ended=true;
+  ['btn-new','btn-nxt','btn-buy','btn-sell','btn-short','btn-cover','btn-exit'].forEach(id=>document.getElementById(id).disabled=true);
   showLoading(true);
 
   // Try to fetch real historical data
@@ -683,6 +691,7 @@ async function startNew(){
   document.getElementById('s-tk').textContent='???';
   if(!chart){chart=new CC(document.getElementById('cv'));}else{chart._rs();}
   chart.mk=[];chart.hideDates=true;
+  S.ended=false;
   renderChart();updateUI();
   document.getElementById('btn-new').disabled=false;
   document.getElementById('btn-nxt').disabled=false;
@@ -750,17 +759,21 @@ function advance(n=1){
 function curP(){return S.visCntDaily>0&&S.visCntDaily<=S.rawAll.length?S.rawAll[S.visCntDaily-1].close:0;}
 
 function doBuy(){
+  if(S.ended||!chart)return;
   const q=parseInt(document.getElementById('i-qty').value)||0;if(q<=0)return;
-  const p=curP(),cost=p*q;if(cost>S.cash){alert('잔고 부족!');return;}
-  S.cash-=cost;const tq=S.pos.q+q;S.pos.a=(S.pos.a*S.pos.q+p*q)/tq;S.pos.q=tq;S.pos.lev=S.leverage;S.trd++;
+  const p=curP();if(p<=0)return;
+  const cost=p*q;if(cost>S.cash){alert('잔고 부족!');return;}
+  const lev=S.pos.q>0?(S.pos.lev||1):S.leverage;
+  S.cash-=cost;const tq=S.pos.q+q;S.pos.a=(S.pos.a*S.pos.q+p*q)/tq;S.pos.q=tq;S.pos.lev=lev;S.trd++;
   chart.mk.push({i:getVisibleData().length-1,t:'buy'});
-  addLog(`BUY${S.leverage>1?' '+S.leverage+'x':''}`,q,p);updateUI();chart.render();
+  addLog(`BUY${lev>1?' '+lev+'x':''}`,q,p);updateUI();chart.render();
 }
 
 function doSell(){
+  if(S.ended||!chart)return;
   const iq=parseInt(document.getElementById('i-qty').value)||0;
   const q=Math.min(iq,S.pos.q);if(q<=0){alert('보유 수량 없음!');return;}
-  const p=curP();
+  const p=curP();if(p<=0)return;
   const lev=S.pos.lev||1;
   const basePnl=(p-S.pos.a)*q;
   const levPnl=basePnl*lev;
@@ -772,18 +785,22 @@ function doSell(){
 }
 
 function doShort(){
+  if(S.ended||!chart)return;
   const q=parseInt(document.getElementById('i-qty').value)||0;if(q<=0)return;
-  const p=curP(),margin=p*q;if(margin>S.cash){alert('잔고 부족! (증거금 필요)');return;}
+  const p=curP();if(p<=0)return;
+  const margin=p*q;if(margin>S.cash){alert('잔고 부족! (증거금 필요)');return;}
+  const lev=S.shortPos.q>0?(S.shortPos.lev||1):S.leverage;
   S.cash-=margin;
-  const tq=S.shortPos.q+q;S.shortPos.a=(S.shortPos.a*S.shortPos.q+p*q)/tq;S.shortPos.q=tq;S.shortPos.lev=S.leverage;S.trd++;
+  const tq=S.shortPos.q+q;S.shortPos.a=(S.shortPos.a*S.shortPos.q+p*q)/tq;S.shortPos.q=tq;S.shortPos.lev=lev;S.trd++;
   chart.mk.push({i:getVisibleData().length-1,t:'sell'});
-  addLog(`SHORT${S.leverage>1?' '+S.leverage+'x':''}`,q,p);updateUI();chart.render();
+  addLog(`SHORT${lev>1?' '+lev+'x':''}`,q,p);updateUI();chart.render();
 }
 
 function doCover(){
+  if(S.ended||!chart)return;
   const iq=parseInt(document.getElementById('i-qty').value)||0;
   const q=Math.min(iq,S.shortPos.q);if(q<=0){alert('숏 포지션 없음!');return;}
-  const p=curP();
+  const p=curP();if(p<=0)return;
   const lev=S.shortPos.lev||1;
   const basePnl=(S.shortPos.a-p)*q;
   const levPnl=basePnl*lev;
@@ -796,12 +813,21 @@ function doCover(){
 
 function addLog(a,q,p){
   const m=MKT[S.mk];const ps=m.c==='$'?`$${p.toFixed(2)}`:`₩${Math.round(p).toLocaleString()}`;
-  S.logs.unshift({a,q,p:ps,t:S.rawAll[S.visCntDaily-1].time});renderLogs();
+  const c=S.rawAll[S.visCntDaily-1];
+  S.logs.unshift({a,q,p:ps,t:c?c.time:''});renderLogs();
+}
+function logLabel(a){
+  if(a.startsWith('BUY'))return{cls:'lb',txt:'매수'};
+  if(a.startsWith('SELL'))return{cls:'ls',txt:'매도'};
+  if(a.startsWith('SHORT'))return{cls:'ls',txt:'공매도'};
+  if(a.startsWith('COVER'))return{cls:'lb',txt:'숏청산'};
+  if(a.startsWith('SPLIT'))return{cls:'lb',txt:'분할'};
+  return{cls:'ls',txt:a};
 }
 function renderLogs(){
   const el=document.getElementById('log-w');
   if(!S.logs.length){el.innerHTML='<div style="color:var(--t3);font-size:12px;text-align:center;padding:16px 0;">거래 기록이 없습니다</div>';return;}
-  el.innerHTML=S.logs.slice(0,30).map(l=>`<div class="le"><span class="lt">${l.t}</span><span class="la ${l.a==='BUY'?'lb':'ls'}">${l.a==='BUY'?'매수':'매도'}</span><span style="flex:1;font-family:monospace;font-size:12px;">${l.q}주 × ${l.p}</span></div>`).join('');
+  el.innerHTML=S.logs.slice(0,30).map(l=>{const lb=logLabel(l.a);return `<div class="le"><span class="lt">${l.t}</span><span class="la ${lb.cls}">${lb.txt}</span><span style="flex:1;font-family:monospace;font-size:12px;">${l.q}주 × ${l.p}</span></div>`;}).join('');
 }
 
 function updateUI(){
@@ -818,8 +844,9 @@ function updateUI(){
   const shortEv=S.shortPos.q>0?S.shortPos.a*S.shortPos.q+shortLevPnl:0;
   const upnl=longLevPnl+shortLevPnl;
   const tot=S.cash+longEv+shortEv,tr=(tot-IC)/IC*100;
-  const upct=(S.pos.a>0||S.shortPos.a>0)?((longEv+shortEv>0?upnl/(S.pos.a*S.pos.q+S.shortPos.a*S.shortPos.q)*100:0)):0;
-  const f=v=>`$${Math.floor(v).toLocaleString()}`;
+  const denom=S.pos.a*S.pos.q+S.shortPos.a*S.shortPos.q;
+  const upct=denom>0?upnl/denom*100:0;
+  const f=v=>`${v<0?'-':''}$${Math.floor(Math.abs(v)).toLocaleString()}`;
   document.getElementById('v-tot').textContent=f(tot);
   const tre=document.getElementById('v-tot-r');tre.textContent=`${tr>=0?'+':''}${tr.toFixed(2)}%`;tre.className=`ss ${tr>=0?'pos':'neg'}`;
   document.getElementById('v-cash').textContent=f(S.cash);
@@ -834,12 +861,15 @@ function updateUI(){
   document.getElementById('v-sa').textContent=`평단가: ${sa}`;
   document.getElementById('v-trd').textContent=S.trd;
   const tt=S.w+S.l;document.getElementById('v-wr').textContent=tt>0?`승률: ${(S.w/tt*100).toFixed(0)}%`:'승률: —';
-  localStorage.setItem('ts_cash',S.cash.toString());
+  // Save cash plus position cost basis so a mid-game reload doesn't lose invested principal
+  localStorage.setItem('ts_cash',String(S.cash+S.pos.a*S.pos.q+S.shortPos.a*S.shortPos.q));
   // Check for leveraged liquidation
-  if(tot<=0&&S.stk){showResult(true);}
+  if(tot<=0&&S.stk&&!S.ended){showResult(true);}
 }
 
 function showResult(bankrupt=false){
+  if(S.ended)return;
+  S.ended=true;
   if(S.pos.q>0){const p=curP();const lev=S.pos.lev||1;const basePnl=(p-S.pos.a)*S.pos.q;const levPnl=basePnl*lev;S.cash+=S.pos.a*S.pos.q+levPnl;if(levPnl>0)S.w++;else if(levPnl<0)S.l++;S.pos={q:0,a:0};}
   // close short position
   if(S.shortPos.q>0){const p=curP();const lev=S.shortPos.lev||1;const basePnl=(S.shortPos.a-p)*S.shortPos.q;const levPnl=basePnl*lev;S.cash+=S.shortPos.a*S.shortPos.q+levPnl;if(levPnl>0)S.w++;else if(levPnl<0)S.l++;S.shortPos={q:0,a:0};}
@@ -1060,6 +1090,7 @@ document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.sec').forEach(x=>x.classList.remove('on'));
   t.classList.add('on');document.getElementById(`sec-${t.dataset.t}`).classList.add('on');
   if(t.dataset.t==='pat')renderPats();
+  if(t.dataset.t==='sim'&&chart){chart._rs();chart.render();}
 }));
 document.getElementById('sel-m').addEventListener('change',e=>{S.mk=e.target.value;});
 document.getElementById('btn-new').addEventListener('click',startNew);
@@ -1111,10 +1142,11 @@ document.getElementById('btn-reset').addEventListener('click',()=>{
   updateUI();renderLogs();
 });
 // Initialize display with saved cash
-if(SAVED_CASH){
-  const sv=parseFloat(SAVED_CASH);
-  document.getElementById('v-tot').textContent=`$${Math.floor(sv).toLocaleString()}`;
-  document.getElementById('v-cash').textContent=`$${Math.floor(sv).toLocaleString()}`;
+if(SAVED_CASH!==null){
+  const sv=SAVED_CASH;
+  const fsv=`${sv<0?'-':''}$${Math.floor(Math.abs(sv)).toLocaleString()}`;
+  document.getElementById('v-tot').textContent=fsv;
+  document.getElementById('v-cash').textContent=fsv;
   const tr=(sv-IC)/IC*100;
   const tre=document.getElementById('v-tot-r');tre.textContent=`${tr>=0?'+':''}${tr.toFixed(2)}%`;tre.className=`ss ${tr>=0?'pos':'neg'}`;
 }
@@ -1217,7 +1249,7 @@ document.getElementById('bat-stop').addEventListener('click',batStop);
 document.getElementById('bat-reset').addEventListener('click',batReset);
 
 // Resize
-window.addEventListener('resize',()=>{if(chart){chart._rs();chart.render();}});
+window.addEventListener('resize',()=>{if(chart){chart._rs();chart.render();}patCharts.forEach(c=>c.resize());});
 </script>
 </body>
 </html>
