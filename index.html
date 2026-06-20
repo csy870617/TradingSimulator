@@ -536,6 +536,16 @@ function parseYahooData(data, market){
         vol:q.volume[i]||0
       });
     }
+    // Raw (unadjusted) Yahoo data shows a large price gap on split days but no
+    // split field, so held positions wouldn't adjust. Detect gaps that closely
+    // match a known split ratio and mark them so advanceOneDaily adjusts shares.
+    for(let i=1;i<candles.length;i++){
+      if(candles[i].open<=0)continue;
+      const ratioGap=candles[i-1].close/candles[i].open;
+      for(const sr of SPLIT_RATIOS){
+        if(Math.abs(ratioGap-sr)/sr<0.06){candles[i].split=sr;break;}
+      }
+    }
     return candles;
   }catch(e){return null;}
 }
@@ -615,7 +625,16 @@ function toMonthly(d){
 // APP STATE
 // ═══════════════════════════════════════
 const IC=10000;
-const SAVED_RAW=localStorage.getItem('ts_cash');
+// Approx FX rates so non-USD markets (priced in ₩) are converted to the
+// USD-denominated cash balance instead of being spent 1:1 as dollars.
+const FX={kos:1350,kosd:1350};
+function fxOf(mk){return FX[mk]||1;}
+function usd(priceLocal){return priceLocal/fxOf(S.mk);}
+// localStorage can throw (Safari private mode, quota, disabled storage);
+// never let persistence failures break the game loop.
+function safeGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function safeSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+const SAVED_RAW=safeGet('ts_cash');
 const SAVED_CASH=(SAVED_RAW!==null&&isFinite(parseFloat(SAVED_RAW)))?parseFloat(SAVED_RAW):null;
 let S={mk:'snp',stk:null,rawAll:[],visCntDaily:0,tf:'D',
   cash:SAVED_CASH!==null?SAVED_CASH:IC,pos:{q:0,a:0},trd:0,w:0,l:0,logs:[],spd:1,isRealData:false,stockStartAssets:SAVED_CASH!==null?SAVED_CASH:IC,
@@ -643,7 +662,7 @@ async function startNew(){
   if(S.pos.q>0&&S.stk){
     const p=curP();const lev=S.pos.lev||1;
     const basePnl=(p-S.pos.a)*S.pos.q;const levPnl=basePnl*lev;
-    S.cash+=S.pos.a*S.pos.q+levPnl;
+    S.cash+=Math.max(0,S.pos.a*S.pos.q+levPnl)/(S.pos.fx||1);
     if(levPnl>0)S.w++;else if(levPnl<0)S.l++;
     S.pos={q:0,a:0};
   }
@@ -651,7 +670,7 @@ async function startNew(){
   if(S.shortPos.q>0&&S.stk){
     const p=curP();const lev=S.shortPos.lev||1;
     const basePnl=(S.shortPos.a-p)*S.shortPos.q;const levPnl=basePnl*lev;
-    S.cash+=S.shortPos.a*S.shortPos.q+levPnl;
+    S.cash+=Math.max(0,S.shortPos.a*S.shortPos.q+levPnl)/(S.shortPos.fx||1);
     if(levPnl>0)S.w++;else if(levPnl<0)S.l++;
     S.shortPos={q:0,a:0};
   }
@@ -727,8 +746,8 @@ function advanceOneDaily(){
   }
   if(curCandle&&parseDt(curCandle.time)>=MAX_DATE){showResult(false);return false;}
   const p=curP();
-  const longLev=S.pos.lev||1;const longBasePnl=S.pos.q>0?(p-S.pos.a)*S.pos.q:0;const longEv=S.pos.q>0?S.pos.a*S.pos.q+longBasePnl*longLev:0;
-  const shortLev=S.shortPos.lev||1;const shortBasePnl=S.shortPos.q>0?(S.shortPos.a-p)*S.shortPos.q:0;const shortEv=S.shortPos.q>0?S.shortPos.a*S.shortPos.q+shortBasePnl*shortLev:0;
+  const longLev=S.pos.lev||1;const longBasePnl=S.pos.q>0?(p-S.pos.a)*S.pos.q:0;const longEv=S.pos.q>0?(S.pos.a*S.pos.q+longBasePnl*longLev)/(S.pos.fx||1):0;
+  const shortLev=S.shortPos.lev||1;const shortBasePnl=S.shortPos.q>0?(S.shortPos.a-p)*S.shortPos.q:0;const shortEv=S.shortPos.q>0?(S.shortPos.a*S.shortPos.q+shortBasePnl*shortLev)/(S.shortPos.fx||1):0;
   const tot=S.cash+longEv+shortEv;
   if(tot<=0){showResult(true);return false;}
   return true;
@@ -762,9 +781,9 @@ function doBuy(){
   if(S.ended||!chart)return;
   const q=parseInt(document.getElementById('i-qty').value)||0;if(q<=0)return;
   const p=curP();if(p<=0)return;
-  const cost=p*q;if(cost>S.cash){alert('잔고 부족!');return;}
+  const cost=usd(p)*q;if(cost>S.cash){alert('잔고 부족!');return;}
   const lev=S.pos.q>0?(S.pos.lev||1):S.leverage;
-  S.cash-=cost;const tq=S.pos.q+q;S.pos.a=(S.pos.a*S.pos.q+p*q)/tq;S.pos.q=tq;S.pos.lev=lev;S.trd++;
+  S.cash-=cost;const tq=S.pos.q+q;S.pos.a=(S.pos.a*S.pos.q+p*q)/tq;S.pos.q=tq;S.pos.lev=lev;S.pos.fx=fxOf(S.mk);S.trd++;
   chart.mk.push({i:getVisibleData().length-1,t:'buy'});
   addLog(`BUY${lev>1?' '+lev+'x':''}`,q,p);updateUI();chart.render();
 }
@@ -777,9 +796,10 @@ function doSell(){
   const lev=S.pos.lev||1;
   const basePnl=(p-S.pos.a)*q;
   const levPnl=basePnl*lev;
-  S.cash+=S.pos.a*q+levPnl;
+  // Leveraged loss capped at invested principal (margin call): proceeds never negative.
+  S.cash+=Math.max(0,S.pos.a*q+levPnl)/(S.pos.fx||fxOf(S.mk));
   if(levPnl>0)S.w++;else if(levPnl<0)S.l++;
-  S.pos.q-=q;if(S.pos.q===0){S.pos.a=0;S.pos.lev=1;}S.trd++;
+  S.pos.q-=q;if(S.pos.q===0){S.pos.a=0;S.pos.lev=1;S.pos.fx=1;}S.trd++;
   chart.mk.push({i:getVisibleData().length-1,t:'sell'});
   addLog(`SELL${lev>1?' '+lev+'x':''}`,q,p);updateUI();chart.render();
 }
@@ -788,10 +808,10 @@ function doShort(){
   if(S.ended||!chart)return;
   const q=parseInt(document.getElementById('i-qty').value)||0;if(q<=0)return;
   const p=curP();if(p<=0)return;
-  const margin=p*q;if(margin>S.cash){alert('잔고 부족! (증거금 필요)');return;}
+  const margin=usd(p)*q;if(margin>S.cash){alert('잔고 부족! (증거금 필요)');return;}
   const lev=S.shortPos.q>0?(S.shortPos.lev||1):S.leverage;
   S.cash-=margin;
-  const tq=S.shortPos.q+q;S.shortPos.a=(S.shortPos.a*S.shortPos.q+p*q)/tq;S.shortPos.q=tq;S.shortPos.lev=lev;S.trd++;
+  const tq=S.shortPos.q+q;S.shortPos.a=(S.shortPos.a*S.shortPos.q+p*q)/tq;S.shortPos.q=tq;S.shortPos.lev=lev;S.shortPos.fx=fxOf(S.mk);S.trd++;
   chart.mk.push({i:getVisibleData().length-1,t:'sell'});
   addLog(`SHORT${lev>1?' '+lev+'x':''}`,q,p);updateUI();chart.render();
 }
@@ -804,9 +824,10 @@ function doCover(){
   const lev=S.shortPos.lev||1;
   const basePnl=(S.shortPos.a-p)*q;
   const levPnl=basePnl*lev;
-  S.cash+=S.shortPos.a*q+levPnl;
+  // Leveraged short loss capped at posted margin (margin call): proceeds never negative.
+  S.cash+=Math.max(0,S.shortPos.a*q+levPnl)/(S.shortPos.fx||fxOf(S.mk));
   if(levPnl>0)S.w++;else if(levPnl<0)S.l++;
-  S.shortPos.q-=q;if(S.shortPos.q===0){S.shortPos.a=0;S.shortPos.lev=1;}S.trd++;
+  S.shortPos.q-=q;if(S.shortPos.q===0){S.shortPos.a=0;S.shortPos.lev=1;S.shortPos.fx=1;}S.trd++;
   chart.mk.push({i:getVisibleData().length-1,t:'buy'});
   addLog(`COVER${lev>1?' '+lev+'x':''}`,q,p);updateUI();chart.render();
 }
@@ -832,19 +853,21 @@ function renderLogs(){
 
 function updateUI(){
   const p=curP();
-  // Long PnL with leverage
+  // FX of each open position (₩-priced markets converted to USD cash)
+  const lfx=S.pos.fx||fxOf(S.mk),sfx=S.shortPos.fx||fxOf(S.mk);
+  // Long PnL with leverage (values converted to USD)
   const longLev=S.pos.lev||1;
   const longBasePnl=S.pos.q>0?(p-S.pos.a)*S.pos.q:0;
-  const longLevPnl=longBasePnl*longLev;
-  const longEv=S.pos.q>0?S.pos.a*S.pos.q+longLevPnl:0;
-  // Short PnL with leverage
+  const longLevPnl=(longBasePnl*longLev)/lfx;
+  const longEv=S.pos.q>0?(S.pos.a*S.pos.q+longBasePnl*longLev)/lfx:0;
+  // Short PnL with leverage (values converted to USD)
   const shortLev=S.shortPos.lev||1;
   const shortBasePnl=S.shortPos.q>0?(S.shortPos.a-p)*S.shortPos.q:0;
-  const shortLevPnl=shortBasePnl*shortLev;
-  const shortEv=S.shortPos.q>0?S.shortPos.a*S.shortPos.q+shortLevPnl:0;
+  const shortLevPnl=(shortBasePnl*shortLev)/sfx;
+  const shortEv=S.shortPos.q>0?(S.shortPos.a*S.shortPos.q+shortBasePnl*shortLev)/sfx:0;
   const upnl=longLevPnl+shortLevPnl;
   const tot=S.cash+longEv+shortEv,tr=(tot-IC)/IC*100;
-  const denom=S.pos.a*S.pos.q+S.shortPos.a*S.shortPos.q;
+  const denom=(S.pos.a*S.pos.q)/lfx+(S.shortPos.a*S.shortPos.q)/sfx;
   const upct=denom>0?upnl/denom*100:0;
   const f=v=>`${v<0?'-':''}$${Math.floor(Math.abs(v)).toLocaleString()}`;
   document.getElementById('v-tot').textContent=f(tot);
@@ -862,7 +885,7 @@ function updateUI(){
   document.getElementById('v-trd').textContent=S.trd;
   const tt=S.w+S.l;document.getElementById('v-wr').textContent=tt>0?`승률: ${(S.w/tt*100).toFixed(0)}%`:'승률: —';
   // Save cash plus position cost basis so a mid-game reload doesn't lose invested principal
-  localStorage.setItem('ts_cash',String(S.cash+S.pos.a*S.pos.q+S.shortPos.a*S.shortPos.q));
+  safeSet('ts_cash',String(S.cash+(S.pos.a*S.pos.q)/(S.pos.fx||1)+(S.shortPos.a*S.shortPos.q)/(S.shortPos.fx||1)));
   // Check for leveraged liquidation
   if(tot<=0&&S.stk&&!S.ended){showResult(true);}
 }
@@ -870,13 +893,13 @@ function updateUI(){
 function showResult(bankrupt=false){
   if(S.ended)return;
   S.ended=true;
-  if(S.pos.q>0){const p=curP();const lev=S.pos.lev||1;const basePnl=(p-S.pos.a)*S.pos.q;const levPnl=basePnl*lev;S.cash+=S.pos.a*S.pos.q+levPnl;if(levPnl>0)S.w++;else if(levPnl<0)S.l++;S.pos={q:0,a:0};}
+  if(S.pos.q>0){const p=curP();const lev=S.pos.lev||1;const basePnl=(p-S.pos.a)*S.pos.q;const levPnl=basePnl*lev;S.cash+=Math.max(0,S.pos.a*S.pos.q+levPnl)/(S.pos.fx||1);if(levPnl>0)S.w++;else if(levPnl<0)S.l++;S.pos={q:0,a:0};}
   // close short position
-  if(S.shortPos.q>0){const p=curP();const lev=S.shortPos.lev||1;const basePnl=(S.shortPos.a-p)*S.shortPos.q;const levPnl=basePnl*lev;S.cash+=S.shortPos.a*S.shortPos.q+levPnl;if(levPnl>0)S.w++;else if(levPnl<0)S.l++;S.shortPos={q:0,a:0};}
+  if(S.shortPos.q>0){const p=curP();const lev=S.shortPos.lev||1;const basePnl=(S.shortPos.a-p)*S.shortPos.q;const levPnl=basePnl*lev;S.cash+=Math.max(0,S.shortPos.a*S.shortPos.q+levPnl)/(S.shortPos.fx||1);if(levPnl>0)S.w++;else if(levPnl<0)S.l++;S.shortPos={q:0,a:0};}
   const stockProfit=S.cash-S.stockStartAssets;
   const stockReturn=S.stockStartAssets>0?(stockProfit/S.stockStartAssets*100):0;
   const ip=stockProfit>=0;
-  localStorage.setItem('ts_cash',S.cash.toString());
+  safeSet('ts_cash',S.cash.toString());
   // Calculate investment period
   const startDate=S.rawAll[S.startDateIdx]?S.rawAll[S.startDateIdx].time:'—';
   const endIdx=Math.min(S.visCntDaily-1,S.rawAll.length-1);
@@ -1138,7 +1161,7 @@ document.getElementById('btn-reset').addEventListener('click',()=>{
   S.cash=IC;S.pos={q:0,a:0};S.shortPos={q:0,a:0};S.leverage=1;S.trd=0;S.w=0;S.l=0;S.logs=[];S.stockStartAssets=IC;
   document.querySelectorAll('.lev-btn').forEach(x=>{x.classList.remove('on');x.style.color='var(--t3)';x.style.borderColor='var(--bd)';});
   document.querySelector('.lev-btn[data-lev="1"]').classList.add('on');
-  localStorage.setItem('ts_cash',IC.toString());
+  safeSet('ts_cash',IC.toString());
   updateUI();renderLogs();
 });
 // Initialize display with saved cash
