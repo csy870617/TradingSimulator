@@ -7,6 +7,8 @@
 <link rel="icon" href="icon.png" type="image/png">
 <style>
 :root{--b0:#06090f;--b1:#0c1117;--b2:#131a24;--b3:#1a2332;--bd:#1e2d42;--bd2:#2a3f5f;--t1:#e8edf5;--t2:#8899b2;--t3:#4a5d78;--ac:#3b82f6;--acd:rgba(59,130,246,.12);--g:#22c55e;--gd:rgba(34,197,94,.10);--r:#ef4444;--rd:rgba(239,68,68,.10);--y:#eab308;--cy:#06b6d4;}
+:root[data-theme="light"]{--b0:#eef1f6;--b1:#ffffff;--b2:#ffffff;--b3:#eef1f6;--bd:#dce1ea;--bd2:#c2cad8;--t1:#1a2130;--t2:#566179;--t3:#8a97ab;--acd:rgba(59,130,246,.10);--gd:rgba(34,197,94,.12);--rd:rgba(239,68,68,.12);}
+:root[data-theme="light"] header{background:rgba(255,255,255,.92);}
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;background:var(--b0);color:var(--t1);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;overflow-x:hidden;font-size:14px;}
 .m{font-family:Menlo,Consolas,'DejaVu Sans Mono',monospace;}
@@ -107,7 +109,10 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
     <button class="tab" data-t="bat">대결 모드</button>
     <button class="tab" data-t="pat">패턴 학습</button>
   </div>
-  <div class="m" style="font-size:10px;color:var(--t3)">Space/→=다음 B=매수 S=매도 D=숏 C=청산</div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button id="theme-toggle" title="테마 전환" style="background:var(--b2);border:1px solid var(--bd);color:var(--t1);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:inherit;">🌙</button>
+    <div class="m" style="font-size:10px;color:var(--t3)">Space/→=다음 B=매수 S=매도 D=숏 C=청산</div>
+  </div>
 </header>
 <main>
   <section class="sec on" id="sec-sim">
@@ -634,6 +639,24 @@ function usd(priceLocal){return priceLocal/fxOf(S.mk);}
 // never let persistence failures break the game loop.
 function safeGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function safeSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+// Theme: dark (default) / light. Canvas charts don't read CSS vars, so their
+// colors are supplied explicitly and refreshed on theme change.
+function currentTheme(){return document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';}
+function chartColorsFor(theme){
+  return theme==='light'
+    ?{bg:'#ffffff',gc:'rgba(20,40,70,.10)',tc:'#9aa6ba'}
+    :{bg:'#0c1117',gc:'rgba(30,45,66,.45)',tc:'#4a5d78'};
+}
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme',theme);
+  safeSet('ts_theme',theme);
+  const btn=document.getElementById('theme-toggle');
+  if(btn)btn.textContent=theme==='light'?'🌙':'☀️';
+  const cc=chartColorsFor(theme);
+  const upd=c=>{if(!c)return;c.o.bg=cc.bg;c.o.gc=cc.gc;c.o.tc=cc.tc;c.render();};
+  if(typeof chart!=='undefined')upd(chart);
+  if(typeof patCharts!=='undefined')patCharts.forEach(upd);
+}
 const SAVED_RAW=safeGet('ts_cash');
 const SAVED_CASH=(SAVED_RAW!==null&&isFinite(parseFloat(SAVED_RAW)))?parseFloat(SAVED_RAW):null;
 let S={mk:'snp',stk:null,rawAll:[],visCntDaily:0,tf:'D',
@@ -708,7 +731,7 @@ async function startNew(){
   document.getElementById('c-ov').style.display='none';
   document.getElementById('s-lbl').textContent='???';
   document.getElementById('s-tk').textContent='???';
-  if(!chart){chart=new CC(document.getElementById('cv'));}else{chart._rs();}
+  if(!chart){chart=new CC(document.getElementById('cv'),chartColorsFor(currentTheme()));}else{chart._rs();}
   chart.mk=[];chart.hideDates=true;
   S.ended=false;
   renderChart();updateUI();
@@ -1088,7 +1111,8 @@ function renderPats(){
     patCharts=[];
     PATS.forEach((p,i)=>{
       const cv=document.getElementById(`pc${i}`);if(!cv)return;
-      const c=new CC(cv,{bg:'#0c1117',svol:true,sma:true,map:[5,20],mac:['#f59e0b','#8b5cf6'],rp:44,bp:20,tp:8});
+      const ct=chartColorsFor(currentTheme());
+      const c=new CC(cv,{bg:ct.bg,gc:ct.gc,tc:ct.tc,svol:true,sma:true,map:[5,20],mac:['#f59e0b','#8b5cf6'],rp:44,bp:20,tp:8});
       c.mnw=1.5;c.mxw=18;
       const result=genPat(p.id);
       const zoneColor=p.tp==='bull'?'rgba(34,197,94,.06)':p.tp==='bear'?'rgba(239,68,68,.06)':'rgba(59,130,246,.06)';
@@ -1271,6 +1295,11 @@ document.getElementById('bat-start').addEventListener('click',batStart);
 document.getElementById('bat-stop').addEventListener('click',batStop);
 document.getElementById('bat-reset').addEventListener('click',batReset);
 
+// Theme toggle
+document.getElementById('theme-toggle').addEventListener('click',()=>{
+  applyTheme(currentTheme()==='light'?'dark':'light');
+});
+applyTheme(safeGet('ts_theme')==='light'?'light':'dark');
 // Resize
 window.addEventListener('resize',()=>{if(chart){chart._rs();chart.render();}patCharts.forEach(c=>c.resize());});
 </script>
