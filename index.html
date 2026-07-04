@@ -966,57 +966,129 @@ function showResult(bankrupt=false){
 // ═══════════════════════════════════════
 // 25 CHART PATTERNS
 // ═══════════════════════════════════════
-function genPat(type,len){
-  // Generate pre-context
-  const pre=[];let b=100;let dt=new Date(2022,6,1);
-  const pushTo=(arr,dir,vol,cnt)=>{for(let i=0;i<cnt;i++){
-    dt.setDate(dt.getDate()+1);while(dt.getDay()===0||dt.getDay()===6)dt.setDate(dt.getDate()+1);
-    const v=vol*(.6+Math.random()*.8),dr=dir*(.002+Math.random()*.005),ns=(Math.random()-.5)*v;
-    const o=b,c=o*(1+dr+ns),h=Math.max(o,c)*(1+Math.random()*v*.4),l=Math.min(o,c)*(1-Math.random()*v*.4);
-    arr.push({time:dt.toISOString().split('T')[0],open:+o.toFixed(2),high:+h.toFixed(2),low:+l.toFixed(2),close:+c.toFixed(2),vol:Math.floor(5e5+Math.random()*2e6)});
-    b=c;}};
-  // pre-context: random walk
-  const preDir=Math.random()>.5?1:-1;
-  pushTo(pre,preDir,.012,40+Math.floor(Math.random()*20));
-  pushTo(pre,-preDir*.5,.008,15+Math.floor(Math.random()*10));
+// Anchor/level-based generator: each pattern is described by explicit price
+// levels (lows, highs, necklines, converging boundaries) so the textbook shape
+// stays crisp instead of being washed out by a random walk. Breakout candles
+// carry extra volume so the lower volume bars confirm the pattern.
+function genPat(type){
+  const d=[];let b=100;const dt=new Date(2022,0,3);
+  const R=(a,c)=>a+Math.random()*(c-a);
+  const nd=()=>{do{dt.setDate(dt.getDate()+1);}while(dt.getDay()===0||dt.getDay()===6);return dt.toISOString().split('T')[0];};
+  // raw candle (explicit OHLC) — used for special single candles
+  const raw=(o,c,hi,lo,vmul)=>{d.push({time:nd(),open:+o.toFixed(2),high:+hi.toFixed(2),low:+lo.toFixed(2),close:+c.toFixed(2),vol:Math.floor((5e5+Math.random()*1.3e6)*(vmul||1))});b=c;};
+  // one candle open=prev close, close=target, proportional wicks
+  const put=(c,vmul)=>{const o=b,hi=Math.max(o,c)*(1+R(0,.006)),lo=Math.min(o,c)*(1-R(0,.006));raw(o,c,hi,lo,vmul);};
+  // smooth move from current level to `to` over n candles (ease = rounded curve)
+  const seg=(to,n,vol,ease,vmul)=>{vol=vol==null?.008:vol;const from=b;for(let i=1;i<=n;i++){let f=i/n;if(ease)f=(1-Math.cos(f*Math.PI))/2;const tgt=from+(to-from)*f;put(tgt*(1+(Math.random()-.5)*2*vol),vmul);}};
+  // zig-zag between an upper and lower boundary that each drift linearly
+  // (converging triangles/wedges/pennants, parallel flag channels)
+  const zig=(hiF,hiT,loF,loT,n,vol,vmul)=>{vol=vol==null?.004:vol;for(let i=1;i<=n;i++){const f=i/n,hi=hiF+(hiT-hiF)*f,lo=loF+(loT-loF)*f;put((i%2)?lo*(1+R(0,vol)):hi*(1-R(0,vol)),vmul);}};
+  // price gap then a single candle in the gap direction
+  const gap=(pct,vmul)=>{const o=b*(1+pct),c=o*(1+(Math.random()-.5)*.01),hi=Math.max(o,c)*(1+R(0,.006)),lo=Math.min(o,c)*(1-R(0,.006));raw(o,c,hi,lo,vmul||2.4);};
 
-  const patStart=pre.length;
-  const d=[...pre];
-  const push=(dir,vol,cnt)=>pushTo(d,dir,vol,cnt);
-
+  let patStart=0,patEnd=0;
   switch(type){
-    case 'double_bottom':push(1,.012,12);push(-1,.018,22);push(1,.01,14);push(-1,.016,20);push(1,.02,25);break;
-    case 'double_top':push(-1,.01,8);push(1,.018,22);push(-1,.01,14);push(1,.015,20);push(-1,.022,25);break;
-    case 'head_shoulders':push(1,.015,15);push(-1,.01,10);push(1,.02,18);push(-1,.013,12);push(1,.01,12);push(-1,.02,20);break;
-    case 'inv_hs':push(-1,.015,15);push(1,.01,10);push(-1,.02,18);push(1,.013,12);push(-1,.01,12);push(1,.02,22);break;
-    case 'cup_handle':push(1,.008,8);push(-1,.01,18);push(.2,.007,14);push(1,.012,18);push(-1,.005,8);push(1,.018,18);break;
-    case 'asc_tri':for(let i=0;i<5;i++){push(1,.012,9);push(-1,.008-i*.001,7);}push(1,.02,15);break;
-    case 'desc_tri':for(let i=0;i<5;i++){push(-1,.012,9);push(1,.008-i*.001,7);}push(-1,.02,15);break;
-    case 'bull_flag':push(1,.025,18);push(-.3,.006,15);push(1,.02,20);break;
-    case 'bear_flag':push(-1,.025,18);push(.3,.006,15);push(-1,.02,20);break;
-    case 'fall_wedge':for(let i=0;i<6;i++){push(-1,.012-i*.001,7);push(1,.008-i*.0005,5);}push(1,.025,18);break;
-    case 'rise_wedge':for(let i=0;i<6;i++){push(1,.012-i*.001,7);push(-1,.008-i*.0005,5);}push(-1,.025,18);break;
-    case 'sym_tri':for(let i=0;i<6;i++){push(i%2?-1:1,.015-i*.002,8);}push(1,.02,15);break;
-    case 'triple_bottom':push(1,.01,10);push(-1,.015,15);push(1,.008,10);push(-1,.014,14);push(1,.007,10);push(-1,.013,13);push(1,.022,22);break;
-    case 'triple_top':push(-1,.01,10);push(1,.015,15);push(-1,.008,10);push(1,.014,14);push(-1,.007,10);push(1,.013,13);push(-1,.022,22);break;
-    case 'round_bottom':push(-1,.006,15);push(-.3,.004,15);push(.1,.003,15);push(.3,.004,15);push(1,.008,20);break;
-    case 'round_top':push(1,.006,15);push(.3,.004,15);push(-.1,.003,15);push(-.3,.004,15);push(-1,.008,20);break;
-    case 'bull_pennant':push(1,.028,15);for(let i=0;i<4;i++){push(i%2?1:-1,.006-i*.001,5);}push(1,.022,18);break;
-    case 'bear_pennant':push(-1,.028,15);for(let i=0;i<4;i++){push(i%2?-1:1,.006-i*.001,5);}push(-1,.022,18);break;
-    case 'island_rev':push(1,.015,20);push(1,.03,3);push(-1,.003,3);push(-1,.03,3);push(-1,.015,20);break;
-    case 'gap_up':push(-1,.01,15);push(-.5,.005,8);b*=1.05;push(1,.015,20);push(1,.008,15);break;
-    case 'gap_down':push(1,.01,15);push(.5,.005,8);b*=.95;push(-1,.015,20);push(-1,.008,15);break;
-    case 'morn_star':push(-1,.015,25);push(-1,.03,1);push(.5,.008,1);push(1,.03,1);push(1,.015,20);break;
-    case 'eve_star':push(1,.015,25);push(1,.03,1);push(-.5,.008,1);push(-1,.03,1);push(-1,.015,20);break;
-    case 'hammer':push(-1,.015,25);d.push({time:(()=>{dt.setDate(dt.getDate()+1);return dt.toISOString().split('T')[0];})(),open:+b.toFixed(2),high:+(b*1.005).toFixed(2),low:+(b*.97).toFixed(2),close:+(b*1.003).toFixed(2),vol:3e6});b*=1.003;push(1,.015,22);break;
-    case 'shoot_star':push(1,.015,25);d.push({time:(()=>{dt.setDate(dt.getDate()+1);return dt.toISOString().split('T')[0];})(),open:+b.toFixed(2),high:+(b*1.03).toFixed(2),low:+(b*.995).toFixed(2),close:+(b*.997).toFixed(2),vol:3e6});b*=.997;push(-1,.015,22);break;
+    case 'double_bottom': // W, two equal lows, breakout above neckline
+      b=120;seg(103,12,.009);patStart=d.length;
+      seg(81,11,.01);seg(92,9,.009);seg(81,11,.01);seg(105,15,.011,false,2.2);patEnd=d.length;
+      seg(115,20,.01);break;
+    case 'double_top': // M, two equal highs, breakdown below neckline
+      b=80;seg(97,12,.009);patStart=d.length;
+      seg(100,10,.009);seg(90,8,.009);seg(100,10,.009);seg(77,15,.011,false,2.2);patEnd=d.length;
+      seg(67,20,.01);break;
+    case 'head_shoulders': // symmetric shoulders, higher head, break neckline
+      b=78;seg(88,10,.009);patStart=d.length;
+      seg(96,8,.009);seg(89,6,.008);seg(107,9,.009,false,1.4);seg(89,7,.008);seg(96,7,.009);seg(80,12,.011,false,2.2);patEnd=d.length;
+      seg(72,18,.01);break;
+    case 'inv_hs': // inverse: lower head, break neckline upward
+      b=122;seg(112,10,.009);patStart=d.length;
+      seg(104,8,.009);seg(111,6,.008);seg(93,9,.009,false,1.4);seg(111,7,.008);seg(104,7,.009);seg(120,12,.011,false,2.2);patEnd=d.length;
+      seg(128,18,.01);break;
+    case 'cup_handle': // rounded cup (U), shallow handle, breakout
+      b=100;seg(100,5,.006);patStart=d.length;
+      seg(80,18,.008,true);seg(100,18,.008,true);seg(93,8,.007);seg(108,10,.011,false,2.2);patEnd=d.length;
+      seg(118,16,.01);break;
+    case 'asc_tri': // flat resistance, rising support, break up
+      b=88;seg(99,10,.009);patStart=d.length;
+      zig(100,100.5,88,97,26,.004);seg(110,12,.011,false,2.2);patEnd=d.length;
+      seg(118,16,.01);break;
+    case 'desc_tri': // flat support, falling resistance, break down
+      b=112;seg(101,10,.009);patStart=d.length;
+      zig(100,89,82,82.5,26,.004);seg(72,12,.011,false,2.2);patEnd=d.length;
+      seg(66,16,.01);break;
+    case 'bull_flag': // steep pole up, small down-sloping channel, breakout
+      b=82;patStart=d.length;seg(118,12,.012,false,1.8);
+      zig(117,110,112,105,14,.004);seg(132,14,.012,false,2.2);patEnd=d.length;
+      seg(140,16,.01);break;
+    case 'bear_flag': // steep pole down, up-sloping channel, breakdown
+      b=118;patStart=d.length;seg(82,12,.012,false,1.8);
+      zig(88,95,83,90,14,.004);seg(68,14,.012,false,2.2);patEnd=d.length;
+      seg(60,16,.01);break;
+    case 'fall_wedge': // both boundaries fall but converge, break up
+      b=112;seg(108,7,.008);patStart=d.length;
+      zig(108,90,100,88,26,.004);seg(104,12,.011,false,2.2);patEnd=d.length;
+      seg(114,16,.01);break;
+    case 'rise_wedge': // both boundaries rise but converge, break down
+      b=88;seg(92,7,.008);patStart=d.length;
+      zig(92,112,88,109,26,.004);seg(96,12,.011,false,2.2);patEnd=d.length;
+      seg(86,16,.01);break;
+    case 'sym_tri': // lower highs + higher lows converge, break up (example)
+      b=95;seg(100,8,.008);patStart=d.length;
+      zig(107,98,90,97,26,.004);seg(110,12,.011,false,2.2);patEnd=d.length;
+      seg(118,16,.01);break;
+    case 'triple_bottom': // three equal lows, breakout
+      b=120;seg(102,10,.009);patStart=d.length;
+      seg(82,9,.01);seg(92,7,.009);seg(82,9,.01);seg(92,7,.009);seg(82,9,.01);seg(104,13,.011,false,2.2);patEnd=d.length;
+      seg(114,18,.01);break;
+    case 'triple_top': // three equal highs, breakdown
+      b=80;seg(98,10,.009);patStart=d.length;
+      seg(100,9,.009);seg(90,7,.009);seg(100,9,.009);seg(90,7,.009);seg(100,9,.009);seg(78,13,.011,false,2.2);patEnd=d.length;
+      seg(68,18,.01);break;
+    case 'round_bottom': // slow saucer bottom, gradual breakout
+      b=100;patStart=d.length;
+      seg(90,9,.006,true);seg(83,9,.006,true);seg(80,7,.005,true);seg(83,9,.006,true);seg(90,9,.006,true);seg(100,9,.006,true);seg(108,9,.009,false,2);patEnd=d.length;
+      seg(116,16,.01);break;
+    case 'round_top': // slow rounded top, gradual breakdown
+      b=100;patStart=d.length;
+      seg(110,9,.006,true);seg(117,9,.006,true);seg(120,7,.005,true);seg(117,9,.006,true);seg(110,9,.006,true);seg(100,9,.006,true);seg(92,9,.009,false,2);patEnd=d.length;
+      seg(84,16,.01);break;
+    case 'bull_pennant': // sharp pole, small symmetric consolidation, breakout
+      b=82;patStart=d.length;seg(120,12,.012,false,1.8);
+      zig(120,115,110,115,12,.003);seg(140,14,.012,false,2.2);patEnd=d.length;
+      seg(148,16,.01);break;
+    case 'bear_pennant': // sharp drop, small consolidation, continuation down
+      b=118;patStart=d.length;seg(80,12,.012,false,1.8);
+      zig(90,85,80,85,12,.003);seg(60,14,.012,false,2.2);patEnd=d.length;
+      seg(52,16,.01);break;
+    case 'island_rev': // gap up, isolated island, gap down
+      b=85;seg(100,16,.009);patStart=d.length;
+      gap(.05,2.4);seg(101,4,.006);gap(-.06,2.4);patEnd=d.length;
+      seg(88,18,.01);break;
+    case 'gap_up': // breakaway gap up
+      b=100;seg(96,14,.008);patStart=d.length;
+      gap(.055,2.6);seg(108,16,.009);patEnd=d.length;
+      seg(116,14,.01);break;
+    case 'gap_down': // breakaway gap down
+      b=100;seg(104,14,.008);patStart=d.length;
+      gap(-.055,2.6);seg(92,16,.009);patEnd=d.length;
+      seg(84,14,.01);break;
+    case 'morn_star': // downtrend, big red / small star / big green
+      b=118;seg(100,18,.01);patStart=d.length;
+      put(b*.94,1.7);{const o=b*.985;raw(o,o*.998,o*1.004,o*.99,.8);}put(b*1.07,2.3);patEnd=d.length;
+      seg(112,18,.01);break;
+    case 'eve_star': // uptrend, big green / small star / big red
+      b=82;seg(100,18,.01);patStart=d.length;
+      put(b*1.06,1.7);{const o=b*1.015;raw(o,o*1.002,o*1.01,o*.996,.8);}put(b*.93,2.3);patEnd=d.length;
+      seg(90,18,.01);break;
+    case 'hammer': // downtrend, long lower-wick reversal candle
+      b=118;seg(100,20,.01);patStart=d.length;
+      {const o=b,c=b*1.004;raw(o,c,Math.max(o,c)*1.004,Math.min(o,c)*.962,2.4);}patEnd=d.length;
+      seg(110,20,.01);break;
+    case 'shoot_star': // uptrend, long upper-wick reversal candle
+      b=82;seg(100,20,.01);patStart=d.length;
+      {const o=b,c=b*.996;raw(o,c,Math.max(o,c)*1.037,Math.min(o,c)*.997,2.4);}patEnd=d.length;
+      seg(90,20,.01);break;
   }
-  const patEnd=d.length;
-  // post-context: continuation after pattern
-  const postDir=Math.random()>.5?1:-1;
-  pushTo(d,postDir,.01,30+Math.floor(Math.random()*20));
-  pushTo(d,-postDir*.3,.007,15+Math.floor(Math.random()*10));
-
   return {data:d, patStart, patEnd};
 }
 
