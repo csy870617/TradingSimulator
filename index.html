@@ -9,6 +9,8 @@
 :root{--b0:#06090f;--b1:#0c1117;--b2:#131a24;--b3:#1a2332;--bd:#1e2d42;--bd2:#2a3f5f;--t1:#e8edf5;--t2:#8899b2;--t3:#4a5d78;--ac:#3b82f6;--acd:rgba(59,130,246,.12);--g:#22c55e;--gd:rgba(34,197,94,.10);--r:#ef4444;--rd:rgba(239,68,68,.10);--y:#eab308;--cy:#06b6d4;}
 :root[data-theme="light"]{--b0:#eef1f6;--b1:#ffffff;--b2:#ffffff;--b3:#eef1f6;--bd:#dce1ea;--bd2:#c2cad8;--t1:#1a2130;--t2:#566179;--t3:#8a97ab;--acd:rgba(59,130,246,.10);--gd:rgba(34,197,94,.12);--rd:rgba(239,68,68,.12);}
 :root[data-theme="light"] header{background:rgba(255,255,255,.92);}
+:root[data-theme="light"] .bat-sim-timer{background:rgba(255,255,255,.92);}
+:root[data-theme="light"] .bat-alert{background:rgba(255,255,255,.97);}
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;background:var(--b0);color:var(--t1);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;overflow-x:hidden;font-size:14px;}
 .m{font-family:Menlo,Consolas,'DejaVu Sans Mono',monospace;}
@@ -300,6 +302,7 @@ class CC{
     const{cx,W,H,d,o,dpr}=this;const rp=o.rp*dpr,bp=o.bp*dpr,tp=o.tp*dpr;
     const cW=W-rp,cH=H-bp-tp,cw=this.cw*dpr;
     cx.clearRect(0,0,W,H);cx.fillStyle=o.bg;cx.fillRect(0,0,W,H);
+    cx.textBaseline='alphabetic'; // markers set 'middle'; reset so axis labels don't shift
     if(!d.length)return;
     const si=Math.max(0,Math.floor(-this.sc/cw)),ei=Math.min(d.length,Math.ceil((cW-this.sc)/cw));
     const vis=d.slice(si,ei);if(!vis.length)return;
@@ -324,7 +327,7 @@ class CC{
     // zones (highlight regions)
     for(const z of this.zones){
       const zs=Math.max(si,z.start),ze=Math.min(ei,z.end);if(zs>=ze)continue;
-      const x1=iX(zs),x2=iX(ze)+cw;
+      const x1=iX(zs),x2=iX(ze); // end is exclusive
       cx.fillStyle=z.color||'rgba(59,130,246,.06)';cx.fillRect(x1,tp,x2-x1,cH);
       cx.strokeStyle=z.border||'rgba(59,130,246,.2)';cx.lineWidth=dpr;cx.setLineDash([4*dpr,3*dpr]);
       cx.beginPath();cx.moveTo(x1,tp);cx.lineTo(x1,tp+cH);cx.stroke();
@@ -528,18 +531,23 @@ function parseYahooData(data, market){
     if(!ts||!q.open) return null;
     const isKR=market==='kos'||market==='kosd';
     const r=isKR?0:2;
+    // Dates in the exchange's own timezone (not the viewer's), so KRX candles
+    // don't shift to the previous day/weekend for viewers west of Korea.
+    const off=(result.meta&&+result.meta.gmtoffset)||0;
     const candles=[];
     for(let i=0;i<ts.length;i++){
       if(q.open[i]==null||q.high[i]==null||q.low[i]==null||q.close[i]==null) continue;
-      const dt=new Date(ts[i]*1000);
-      candles.push({
-        time:fmtDt(dt),
+      const candle={
+        time:new Date((ts[i]+off)*1000).toISOString().slice(0,10),
         open:+q.open[i].toFixed(r),
         high:+q.high[i].toFixed(r),
         low:+q.low[i].toFixed(r),
         close:+q.close[i].toFixed(r),
-        vol:q.volume[i]||0
-      });
+        vol:(q.volume&&q.volume[i])||0
+      };
+      // Yahoo can append a live candle with the same date; keep the latest one.
+      if(candles.length&&candles[candles.length-1].time===candle.time)candles[candles.length-1]=candle;
+      else candles.push(candle);
     }
     // Raw (unadjusted) Yahoo data shows a large price gap on split days but no
     // split field, so held positions wouldn't adjust. Detect gaps that closely
@@ -559,7 +567,7 @@ function parseYahooData(data, market){
 function genD(pr,len=1300,startBase,startDt){
   const d=[];let b=startBase||(pr[0]+Math.random()*(pr[1]-pr[0]));
   let dt;
-  if(startDt){dt=new Date(startDt);}else{
+  if(startDt){dt=parseDt(startDt);}else{ // local parse; new Date('YYYY-MM-DD') is UTC and can repeat a date
     const startYear=2010+Math.floor(Math.random()*14);
     dt=new Date(startYear,Math.floor(Math.random()*12),1);
   }
@@ -604,14 +612,16 @@ function extendData(){
 // TIMEFRAME AGGREGATION
 // ═══════════════════════════════════════
 function parseDt(s){const p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
+// Monday of the candle's week; grouping by weekday order alone merged two
+// different weeks when a whole week of data was missing (e.g. Mon -> next Tue).
+function wkKey(s){const d=parseDt(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return fmtDt(d);}
 function toWeekly(d){
-  const w=[];let cur=null,lastWd=-1;
+  const w=[];let cur=null,ck='';
   for(const c of d){
-    const wd=parseDt(c.time).getDay();
-    if(!cur||wd<=lastWd){
-      if(cur)w.push(cur);cur={time:c.time,open:c.open,high:c.high,low:c.low,close:c.close,vol:c.vol};
+    const k=wkKey(c.time);
+    if(k!==ck){
+      if(cur)w.push(cur);ck=k;cur={time:c.time,open:c.open,high:c.high,low:c.low,close:c.close,vol:c.vol};
     }else{cur.high=Math.max(cur.high,c.high);cur.low=Math.min(cur.low,c.low);cur.close=c.close;cur.vol+=c.vol;}
-    lastWd=wd;
   }
   if(cur)w.push(cur);return w;
 }
@@ -661,8 +671,26 @@ const SAVED_RAW=safeGet('ts_cash');
 const SAVED_CASH=(SAVED_RAW!==null&&isFinite(parseFloat(SAVED_RAW)))?parseFloat(SAVED_RAW):null;
 let S={mk:'snp',stk:null,rawAll:[],visCntDaily:0,tf:'D',
   cash:SAVED_CASH!==null?SAVED_CASH:IC,pos:{q:0,a:0},trd:0,w:0,l:0,logs:[],spd:1,isRealData:false,stockStartAssets:SAVED_CASH!==null?SAVED_CASH:IC,
-  startDateIdx:0,shortPos:{q:0,a:0},leverage:1,ended:true};
+  startDateIdx:0,shortPos:{q:0,a:0},leverage:1,ended:true,
+  marks:[]}; // trade markers by daily index, so they survive timeframe switches
 let chart=null;
+
+// Map daily-index markers onto the candles currently shown (D/W/M).
+function syncMarks(){
+  if(!chart)return;const vis=chart.d;
+  chart.mk=S.marks.map(m=>{
+    const c=S.rawAll[m.di];if(!c||!vis.length)return null;
+    let i=Math.min(vis.length-1,S.tf==='D'?m.di:vis.length-1);
+    if(S.tf!=='D')while(i>0&&vis[i].time>c.time)i--;
+    return {i,t:m.t};
+  }).filter(Boolean);
+}
+function addMark(t){S.marks.push({di:S.visCntDaily-1,t});syncMarks();}
+// Keep leverage buttons in sync with S.leverage.
+function setLev(lev){
+  S.leverage=lev;
+  document.querySelectorAll('.lev-btn').forEach(x=>{const on=+x.dataset.lev===lev;x.classList.toggle('on',on);x.style.color=on?'var(--y)':'var(--t3)';x.style.borderColor=on?'var(--y)':'var(--bd)';});
+}
 
 function getVisibleData(){
   const daily=S.rawAll.slice(0,S.visCntDaily);
@@ -680,7 +708,6 @@ function showLoading(show){
 }
 
 async function startNew(){
-  const m=MKT[S.mk];
   // sell any existing position at current price before switching
   if(S.pos.q>0&&S.stk){
     const p=curP();const lev=S.pos.lev||1;
@@ -697,6 +724,10 @@ async function startNew(){
     if(levPnl>0)S.w++;else if(levPnl<0)S.l++;
     S.shortPos={q:0,a:0};
   }
+  // The market dropdown only takes effect for the next stock; applying it
+  // mid-game re-priced the current stock with another market's FX/currency.
+  S.mk=document.getElementById('sel-m').value;
+  const m=MKT[S.mk];
   S.stk=m.s[Math.floor(Math.random()*m.s.length)];
 
   // Disable buttons during loading
@@ -704,48 +735,53 @@ async function startNew(){
   ['btn-new','btn-nxt','btn-buy','btn-sell','btn-short','btn-cover','btn-exit'].forEach(id=>document.getElementById(id).disabled=true);
   showLoading(true);
 
-  // Try to fetch real historical data
-  S.isRealData=false;
-  let realData=null;
   try{
-    realData=await fetchRealData(S.stk.t, S.mk);
-  }catch(e){}
-
-  if(realData&&realData.length>100){
-    S.rawAll=realData;
-    S.isRealData=true;
-  }else{
-    // Fallback to synthetic data
-    S.rawAll=genD(m.pr,1300);
+    // Try to fetch real historical data
     S.isRealData=false;
-  }
+    let realData=null;
+    try{
+      realData=await fetchRealData(S.stk.t, S.mk);
+    }catch(e){}
 
-  // start showing 55-65% of data, hide rest as "future"
-  S.visCntDaily=Math.floor(S.rawAll.length*.55)+Math.floor(Math.random()*Math.min(100,S.rawAll.length*.1));
-  // keep cash (don't reset to IC), only reset on first run
-  if(S.cash===0&&S.trd===0)S.cash=IC;
-  S.stockStartAssets=S.cash;
-  S.startDateIdx=S.visCntDaily>0?S.visCntDaily-1:0;
-  S.shortPos={q:0,a:0};S.leverage=1;
-  S.logs=[];
-  document.getElementById('c-ov').style.display='none';
-  document.getElementById('s-lbl').textContent='???';
-  document.getElementById('s-tk').textContent='???';
-  if(!chart){chart=new CC(document.getElementById('cv'),chartColorsFor(currentTheme()));}else{chart._rs();}
-  chart.mk=[];chart.hideDates=true;
-  S.ended=false;
-  renderChart();updateUI();
-  document.getElementById('btn-new').disabled=false;
-  document.getElementById('btn-nxt').disabled=false;
-  document.getElementById('btn-buy').disabled=false;
-  document.getElementById('btn-sell').disabled=false;
-  document.getElementById('btn-short').disabled=false;
-  document.getElementById('btn-cover').disabled=false;
-  document.getElementById('btn-exit').disabled=false;
+    if(realData&&realData.length>100){
+      S.rawAll=realData;
+      S.isRealData=true;
+    }else{
+      // Fallback to synthetic data
+      S.rawAll=genD(m.pr,1300);
+      S.isRealData=false;
+    }
+
+    // start showing 55-65% of data, hide rest as "future"
+    S.visCntDaily=Math.floor(S.rawAll.length*.55)+Math.floor(Math.random()*Math.min(100,S.rawAll.length*.1));
+    // keep cash (don't reset to IC), only reset on first run
+    if(S.cash===0&&S.trd===0)S.cash=IC;
+    S.stockStartAssets=S.cash;
+    S.startDateIdx=S.visCntDaily>0?S.visCntDaily-1:0;
+    S.shortPos={q:0,a:0};setLev(1);
+    S.logs=[];S.marks=[];renderLogs(); // clear the previous stock's trade log on screen too
+    document.getElementById('c-ov').style.display='none';
+    document.getElementById('s-lbl').textContent='???';
+    document.getElementById('s-tk').textContent='???';
+    if(!chart){chart=new CC(document.getElementById('cv'),chartColorsFor(currentTheme()));}else{chart._rs();}
+    chart.mk=[];chart.hideDates=true;
+    S.ended=false;
+    renderChart();updateUI();
+    document.getElementById('btn-nxt').disabled=false;
+    document.getElementById('btn-buy').disabled=false;
+    document.getElementById('btn-sell').disabled=false;
+    document.getElementById('btn-short').disabled=false;
+    document.getElementById('btn-cover').disabled=false;
+    document.getElementById('btn-exit').disabled=false;
+  }finally{
+    // never leave "새 종목" stuck disabled if setup throws
+    document.getElementById('btn-new').disabled=false;
+  }
 }
 
 function renderChart(){
   const vis=getVisibleData();
+  chart.d=vis;syncMarks();
   chart.setData(vis);chart.toEnd();chart.render();
   if(!vis.length)return;
   const last=vis[vis.length-1];const m=MKT[S.mk];
@@ -807,7 +843,7 @@ function doBuy(){
   const cost=usd(p)*q;if(cost>S.cash){alert('잔고 부족!');return;}
   const lev=S.pos.q>0?(S.pos.lev||1):S.leverage;
   S.cash-=cost;const tq=S.pos.q+q;S.pos.a=(S.pos.a*S.pos.q+p*q)/tq;S.pos.q=tq;S.pos.lev=lev;S.pos.fx=fxOf(S.mk);S.trd++;
-  chart.mk.push({i:getVisibleData().length-1,t:'buy'});
+  addMark('buy');
   addLog(`BUY${lev>1?' '+lev+'x':''}`,q,p);updateUI();chart.render();
 }
 
@@ -823,7 +859,7 @@ function doSell(){
   S.cash+=Math.max(0,S.pos.a*q+levPnl)/(S.pos.fx||fxOf(S.mk));
   if(levPnl>0)S.w++;else if(levPnl<0)S.l++;
   S.pos.q-=q;if(S.pos.q===0){S.pos.a=0;S.pos.lev=1;S.pos.fx=1;}S.trd++;
-  chart.mk.push({i:getVisibleData().length-1,t:'sell'});
+  addMark('sell');
   addLog(`SELL${lev>1?' '+lev+'x':''}`,q,p);updateUI();chart.render();
 }
 
@@ -835,7 +871,7 @@ function doShort(){
   const lev=S.shortPos.q>0?(S.shortPos.lev||1):S.leverage;
   S.cash-=margin;
   const tq=S.shortPos.q+q;S.shortPos.a=(S.shortPos.a*S.shortPos.q+p*q)/tq;S.shortPos.q=tq;S.shortPos.lev=lev;S.shortPos.fx=fxOf(S.mk);S.trd++;
-  chart.mk.push({i:getVisibleData().length-1,t:'sell'});
+  addMark('sell');
   addLog(`SHORT${lev>1?' '+lev+'x':''}`,q,p);updateUI();chart.render();
 }
 
@@ -851,7 +887,7 @@ function doCover(){
   S.cash+=Math.max(0,S.shortPos.a*q+levPnl)/(S.shortPos.fx||fxOf(S.mk));
   if(levPnl>0)S.w++;else if(levPnl<0)S.l++;
   S.shortPos.q-=q;if(S.shortPos.q===0){S.shortPos.a=0;S.shortPos.lev=1;S.shortPos.fx=1;}S.trd++;
-  chart.mk.push({i:getVisibleData().length-1,t:'buy'});
+  addMark('buy');
   addLog(`COVER${lev>1?' '+lev+'x':''}`,q,p);updateUI();chart.render();
 }
 
@@ -951,7 +987,7 @@ function showResult(bankrupt=false){
     <div class="sr"><span>수익</span><span class="m ${ip?'pos':'neg'}">${stockProfit>=0?'+':''}$${Math.floor(Math.abs(stockProfit)).toLocaleString()}${stockProfit<0?' (손실)':''}</span></div>
     <div class="sr"><span>수익률</span><span class="m ${ip?'pos':'neg'}">${stockReturn>=0?'+':''}${stockReturn.toFixed(2)}%</span></div>
     <div class="sr"><span>총 거래</span><span class="m">${S.trd}회</span></div>
-    <div class="sr"><span>승률</span><span class="m">${tt>0?(S.w/tt*100).toFixed(0):'—'}%</span></div>
+    <div class="sr"><span>승률</span><span class="m">${tt>0?(S.w/tt*100).toFixed(0)+'%':'—'}</span></div>
     ${bankrupt?'<div class="sr" style="color:var(--r);font-weight:700;">⚠️ 총 자산이 0 이하로 파산했습니다</div>':''}`;
   document.getElementById('modal').classList.add('show');
   document.getElementById('btn-nxt').disabled=true;
@@ -1211,7 +1247,6 @@ document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
   if(t.dataset.t==='pat')renderPats();
   if(t.dataset.t==='sim'&&chart){chart._rs();chart.render();}
 }));
-document.getElementById('sel-m').addEventListener('change',e=>{S.mk=e.target.value;});
 document.getElementById('btn-new').addEventListener('click',startNew);
 document.getElementById('btn-nxt').addEventListener('click',()=>advance(S.spd));
 document.getElementById('btn-buy').addEventListener('click',doBuy);
@@ -1220,19 +1255,20 @@ document.getElementById('btn-short').addEventListener('click',doShort);
 document.getElementById('btn-cover').addEventListener('click',doCover);
 document.getElementById('btn-exit').addEventListener('click',()=>{if(S.stk)showResult(false);});
 // Leverage buttons
-document.querySelectorAll('.lev-btn').forEach(b=>b.addEventListener('click',()=>{
-  document.querySelectorAll('.lev-btn').forEach(x=>{x.classList.remove('on');x.style.color='var(--t3)';x.style.borderColor='var(--bd)';});
-  b.classList.add('on');b.style.color='var(--y)';b.style.borderColor='var(--y)';
-  S.leverage=parseInt(b.dataset.lev);
-}));
+document.querySelectorAll('.lev-btn').forEach(b=>b.addEventListener('click',()=>setLev(parseInt(b.dataset.lev))));
 document.addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT')return;
+  // Ignore browser shortcuts (Ctrl+C used to cover a short), form fields, and
+  // other tabs (Space was hijacked there and the page couldn't scroll).
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const tg=e.target;if(tg&&(tg.tagName==='INPUT'||tg.tagName==='SELECT'||tg.tagName==='TEXTAREA'||tg.isContentEditable))return;
+  if(!document.getElementById('sec-sim').classList.contains('on'))return;
   if(e.key===' '||e.key==='ArrowRight'){e.preventDefault();if(!document.getElementById('btn-nxt').disabled)advance(S.spd);}
   if(e.key==='b'||e.key==='B')doBuy();if(e.key==='s'||e.key==='S')doSell();
   if(e.key==='d'||e.key==='D')doShort();if(e.key==='c'||e.key==='C')doCover();
 });
 document.querySelectorAll('.qb button').forEach(b=>b.addEventListener('click',()=>{
-  const p=curP();if(p<=0)return;const pct=parseInt(b.dataset.p);
+  // price in USD so ₩-priced stocks size against the USD cash balance
+  const p=usd(curP());if(p<=0)return;const pct=parseInt(b.dataset.p);
   if(S.pos.q>0||S.shortPos.q>0){
     // if holding any position, calculate based on larger position
     const maxQ=Math.max(S.pos.q,S.shortPos.q);
@@ -1249,14 +1285,13 @@ document.querySelectorAll('.sb').forEach(b=>b.addEventListener('click',()=>{
 document.querySelectorAll('.tf-btn').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.tf-btn').forEach(x=>x.classList.remove('on'));b.classList.add('on');
   S.tf=b.dataset.tf;
-  if(chart&&S.rawAll.length){chart.mk=[];renderChart();updateUI();}
+  if(chart&&S.rawAll.length){renderChart();updateUI();} // markers are re-mapped, not dropped
 }));
 // Reset total assets
 document.getElementById('btn-reset').addEventListener('click',()=>{
   if(!confirm('총 자산을 $10,000으로 초기화하시겠습니까?'))return;
-  S.cash=IC;S.pos={q:0,a:0};S.shortPos={q:0,a:0};S.leverage=1;S.trd=0;S.w=0;S.l=0;S.logs=[];S.stockStartAssets=IC;
-  document.querySelectorAll('.lev-btn').forEach(x=>{x.classList.remove('on');x.style.color='var(--t3)';x.style.borderColor='var(--bd)';});
-  document.querySelector('.lev-btn[data-lev="1"]').classList.add('on');
+  S.cash=IC;S.pos={q:0,a:0};S.shortPos={q:0,a:0};S.trd=0;S.w=0;S.l=0;S.logs=[];S.stockStartAssets=IC;
+  setLev(1);
   safeSet('ts_cash',IC.toString());
   updateUI();renderLogs();
 });
@@ -1272,7 +1307,7 @@ if(SAVED_CASH!==null){
 // ═══════════════════════════════════════
 // BATTLE MODE TIMER
 // ═══════════════════════════════════════
-let BAT={totalSec:0,remainSec:0,interval:null,running:false,barEl:null};
+let BAT={totalSec:0,remainSec:0,interval:null,running:false,barEl:null,endAt:0,warned:false,hideT:null};
 function batFmt(sec){const m=Math.floor(sec/60),s=sec%60;return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;}
 function batUpdateDisplay(){
   document.getElementById('bat-timer-val').textContent=batFmt(BAT.remainSec);
@@ -1296,6 +1331,10 @@ function batSetTime(min){
 function batStart(){
   if(BAT.running||BAT.totalSec<=0)return;
   BAT.running=true;BAT.remainSec=BAT.totalSec;
+  // Count down against the wall clock: setInterval is throttled in background
+  // tabs, which made the "same time for everyone" battle run slow.
+  BAT.endAt=Date.now()+BAT.totalSec*1000;BAT.warned=false;
+  clearTimeout(BAT.hideT); // a previous run's delayed hide must not hide this run's timer
   // Create progress bar
   if(!BAT.barEl){BAT.barEl=document.createElement('div');BAT.barEl.className='bat-bar';document.body.appendChild(BAT.barEl);}
   BAT.barEl.style.width='100%';BAT.barEl.classList.remove('warn');
@@ -1310,18 +1349,22 @@ function batStart(){
   document.querySelectorAll('.sec').forEach(x=>x.classList.remove('on'));
   document.querySelector('[data-t="sim"]').classList.add('on');
   document.getElementById('sec-sim').classList.add('on');
+  if(chart){chart._rs();chart.render();} // same refresh as clicking the simulator tab
   BAT.interval=setInterval(()=>{
-    BAT.remainSec--;
+    const r=Math.max(0,Math.ceil((BAT.endAt-Date.now())/1000));
+    if(r===BAT.remainSec)return;
+    BAT.remainSec=r;
     batUpdateDisplay();
     // Update timer val visible in sim tab header area
     if(BAT.remainSec<=0){
       batTimeUp();
-    }else if(BAT.remainSec===30){
+    }else if(BAT.remainSec<=30&&!BAT.warned){
       // Flash warning
+      BAT.warned=true;
       document.getElementById('bat-timer-status').textContent='30초 남음!';
       document.getElementById('bat-timer-status').style.color='var(--r)';
     }
-  },1000);
+  },250);
 }
 function batTimeUp(){
   clearInterval(BAT.interval);BAT.running=false;
@@ -1332,7 +1375,7 @@ function batTimeUp(){
   if(BAT.barEl){BAT.barEl.style.width='0%';}
   document.getElementById('bst-time').textContent='00:00';
   // Hide sim timer after a short delay so user sees 00:00
-  setTimeout(()=>{document.getElementById('bat-sim-timer').classList.remove('on','warn');},3000);
+  BAT.hideT=setTimeout(()=>{if(!BAT.running)document.getElementById('bat-sim-timer').classList.remove('on','warn');},3000);
   // Show result if stock is active
   if(S.stk&&!document.getElementById('btn-nxt').disabled){showResult(false);}
   // Show time-up alert
