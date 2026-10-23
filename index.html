@@ -10,9 +10,10 @@
 :root[data-theme="light"]{--b0:#eef1f6;--b1:#ffffff;--b2:#ffffff;--b3:#eef1f6;--bd:#dce1ea;--bd2:#c2cad8;--t1:#1a2130;--t2:#566179;--t3:#8a97ab;--acd:rgba(59,130,246,.10);--gd:rgba(34,197,94,.12);--rd:rgba(239,68,68,.12);}
 :root[data-theme="light"] header{background:rgba(255,255,255,.92);}
 :root[data-theme="light"] .bat-sim-timer{background:rgba(255,255,255,.92);}
-:root[data-theme="light"] .bat-alert{background:rgba(255,255,255,.97);}
 *{margin:0;padding:0;box-sizing:border-box;}
-html,body{height:100%;background:var(--b0);color:var(--t1);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;overflow-x:hidden;font-size:14px;}
+html{height:100%;background:var(--b0);}
+/* overflow only on body so the window (not body) scrolls: mobile address bars can collapse */
+body{min-height:100%;background:var(--b0);color:var(--t1);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;overflow-x:hidden;font-size:14px;}
 .m{font-family:Menlo,Consolas,'DejaVu Sans Mono',monospace;}
 header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--bd);background:rgba(6,9,15,.92);backdrop-filter:blur(10px);position:sticky;top:0;z-index:100;}
 .logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:17px;letter-spacing:-.5px;}
@@ -21,10 +22,11 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
 .tab{padding:7px 18px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t2);transition:all .2s;border:none;background:none;font-family:inherit;}
 .tab:hover{color:var(--t1);background:var(--b3);}
 .tab.on{background:var(--ac);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,.3);}
-main{padding:14px 20px 30px;max-width:1500px;margin:0 auto;}
+main{padding:14px 20px 16px;max-width:1500px;margin:0 auto;}
 .sec{display:none;}.sec.on{display:block;}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px;}
-.sc{background:var(--b2);border:1px solid var(--bd);border-radius:9px;padding:11px 14px;}
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+.sc{background:var(--b2);border:1px solid var(--bd);border-radius:9px;padding:10px 14px;min-width:0;}
+.sc .sv,.sc .ss{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .sl{font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;}
 .sv{font-family:Menlo,Consolas,monospace;font-size:17px;font-weight:700;}
 .ss{font-family:Menlo,Consolas,monospace;font-size:11px;margin-top:2px;}
@@ -40,23 +42,53 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
 .bn:hover{box-shadow:0 4px 18px rgba(59,130,246,.35);transform:translateY(-1px);}
 .btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important;}
 .sg{display:flex;gap:2px;}
-.sb{padding:5px 9px;font-size:11px;font-family:Menlo,Consolas,monospace;background:var(--b2);border:1px solid var(--bd);color:var(--t3);border-radius:5px;cursor:pointer;transition:all .15s;}
+.sb{padding:5px 9px;font-size:11px;font-family:inherit;font-weight:600;background:var(--b2);border:1px solid var(--bd);color:var(--t3);border-radius:5px;cursor:pointer;transition:all .15s;}
 .sb.on{color:var(--ac);border-color:var(--ac);background:var(--acd);}
-.lev-btn.on{color:var(--y)!important;border-color:var(--y)!important;background:rgba(234,179,8,.1)!important;}
+.lev{display:flex;align-items:center;gap:4px;margin-bottom:9px;}
+.lev>span{font-size:11px;color:var(--t3);margin-right:4px;}
+.lev-btn{padding:4px 10px;font-size:11px;font-family:Menlo,Consolas,monospace;background:var(--b1);border:1px solid var(--bd);color:var(--t3);border-radius:5px;cursor:pointer;transition:all .15s;}
+.lev-btn.on{color:var(--y);border-color:var(--y);background:rgba(234,179,8,.1);}
 .tf-grp{display:flex;gap:2px;}
 .tf-btn{padding:5px 10px;font-size:11px;font-weight:600;background:var(--b2);border:1px solid var(--bd);color:var(--t3);border-radius:5px;cursor:pointer;transition:all .15s;font-family:inherit;}
 .tf-btn.on{color:var(--y);border-color:var(--y);background:rgba(234,179,8,.1);}
-.cw{background:var(--b2);border:1px solid var(--bd);border-radius:10px;overflow:hidden;margin-bottom:12px;}
+.cw{background:var(--b2);border:1px solid var(--bd);border-radius:10px;overflow:hidden;}
 .ch{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--bd);flex-wrap:wrap;gap:6px;}
 .sn{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;}
 .sbg{font-family:Menlo,Consolas,monospace;font-size:10px;background:var(--acd);color:var(--ac);padding:2px 7px;border-radius:4px;font-weight:600;}
-.ccw{position:relative;width:100%;height:460px;background:var(--b1);}
+/* chart height follows the window so chart + order panel fit on one screen */
+.ccw{position:relative;width:100%;height:clamp(320px,calc(100vh - 266px),700px);background:var(--b1);}
 .ccw canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
-.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--b1);z-index:5;gap:10px;}
+.ccw canvas,.pch canvas{touch-action:pan-y;}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--b1);z-index:5;gap:10px;padding:0 16px;text-align:center;}
 .ov .ic{font-size:36px;opacity:.3;}.ov p{color:var(--t3);font-size:13px;}
-.tp{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.ov .btn{margin-top:4px;}
+.ov .ov-skip{background:none;border:none;color:var(--t3);font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;padding:4px;}
+.ov .ov-skip:hover{color:var(--t1);}
+/* simulator: chart on the left, play/order/log in a side column */
+.sim-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;grid-template-rows:auto auto 1fr;grid-template-areas:"main play" "main order" "main log";gap:10px 12px;}
+.sim-main{grid-area:main;min-width:0;}
+.sim-main .cr{margin-bottom:8px;}
+#play{grid-area:play;}#order{grid-area:order;}#logc{grid-area:log;}
+.play{display:flex;flex-direction:column;gap:8px;}
+.play #btn-nxt{width:100%;justify-content:center;padding:11px 16px;font-size:14px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation;}
+.play-row{display:flex;align-items:center;gap:6px;}
+.play-row .sg{flex:1;}
+.play-row .sb{flex:1;}
+#btn-exit{font-size:12px;padding:7px 14px;}
+#logc{display:flex;flex-direction:column;min-height:96px;}
+#logc .lw{flex:1 1 auto;height:0;min-height:0;max-height:none;}
 .tc{background:var(--b2);border:1px solid var(--bd);border-radius:9px;padding:13px 15px;}
-.tc h3{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px;}
+.tc h3{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.est{font-size:11px;font-family:Menlo,Consolas,monospace;color:var(--t3);text-align:right;margin:-2px 0 8px;min-height:14px;}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.acts .btn{justify-content:center;}
+.b-short{background:rgba(234,179,8,.1);color:var(--y);border:1px solid rgba(234,179,8,.2);}.b-short:hover{background:rgba(234,179,8,.2);}
+.b-cover{background:rgba(6,182,212,.1);color:var(--cy);border:1px solid rgba(6,182,212,.2);}.b-cover:hover{background:rgba(6,182,212,.2);}
+.kbd{margin-top:10px;font-size:10px;color:var(--t3);line-height:1.6;display:flex;flex-wrap:wrap;gap:3px 6px;}
+.kbd b{font-family:Menlo,Consolas,monospace;font-weight:600;color:var(--t2);background:var(--b1);border:1px solid var(--bd);border-radius:3px;padding:0 4px;}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:var(--b3);color:var(--t1);border:1px solid var(--bd2);padding:9px 16px;border-radius:9px;font-size:13px;z-index:400;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:0 6px 20px rgba(0,0,0,.35);max-width:90vw;text-align:center;}
+.toast.show{opacity:1;transform:translate(-50%,0);}
+.toast.err{border-color:rgba(239,68,68,.55);}
 .ir{display:flex;align-items:center;gap:7px;margin-bottom:7px;}
 .ir label{font-size:12px;color:var(--t3);width:48px;flex-shrink:0;}
 .ir input{flex:1;background:var(--b1);border:1px solid var(--bd);color:var(--t1);padding:7px 10px;border-radius:5px;font-family:Menlo,Consolas,monospace;font-size:13px;outline:none;}
@@ -65,6 +97,7 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
 .qb button{flex:1;padding:5px;font-size:11px;font-family:Menlo,Consolas,monospace;background:var(--b1);border:1px solid var(--bd);border-radius:4px;color:var(--t3);cursor:pointer;transition:all .15s;}
 .qb button:hover{color:var(--t1);border-color:var(--bd2);}
 .lw{max-height:185px;overflow-y:auto;}
+.lw-empty{color:var(--t3);font-size:12px;text-align:center;padding:16px 0;}
 .le{font-size:12px;padding:4px 0;border-bottom:1px solid rgba(30,42,69,.3);display:flex;gap:8px;align-items:center;}
 .lt{font-family:Menlo,Consolas,monospace;color:var(--t3);font-size:10px;flex-shrink:0;}
 .la{font-weight:600;padding:1px 5px;border-radius:3px;font-size:10px;flex-shrink:0;}
@@ -85,7 +118,11 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
 .mo{background:var(--b2);border:1px solid var(--bd);border-radius:12px;padding:24px;max-width:400px;width:90%;text-align:center;}
 .mo h2{font-size:20px;margin-bottom:6px;}.mo p{color:var(--t2);font-size:13px;margin-bottom:4px;line-height:1.5;}
 .sr{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd);font-size:13px;}.sr:last-child{border:none;}
-.mo .btn{margin-top:14px;justify-content:center;width:100%;}
+.m-btns{display:flex;gap:8px;margin-top:14px;}
+.m-btns .btn{flex:1;justify-content:center;}
+#m-close{background:var(--b1);color:var(--t2);border:1px solid var(--bd);}
+.m-note{font-size:11px;color:var(--t3);margin-top:6px;}
+.sr.hl{font-weight:700;background:var(--acd);border-radius:6px;padding:8px 10px;margin-top:6px;border:none;}
 .legend{font-size:10px;color:var(--t3);display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
 .legend span{display:flex;align-items:center;gap:3px;}
 ::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px;}
@@ -93,105 +130,143 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
 .bat-bar.warn{background:linear-gradient(90deg,var(--y),var(--r));}
 .bat-sim-timer{position:absolute;top:10px;right:10px;z-index:10;background:rgba(6,9,15,.88);border:1px solid var(--bd);border-radius:10px;padding:8px 14px;display:none;align-items:center;gap:10px;backdrop-filter:blur(8px);min-width:120px;}
 .bat-sim-timer.on{display:flex;}
+.bat-time.sel{outline:2px solid var(--y);outline-offset:2px;}
 .bat-sim-timer .bst-icon{font-size:16px;}
 .bat-sim-timer .bst-time{font-family:Menlo,Consolas,'DejaVu Sans Mono',monospace;font-size:20px;font-weight:700;color:var(--t1);letter-spacing:1px;}
 .bat-sim-timer .bst-label{font-size:9px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
 .bat-sim-timer.warn .bst-time{color:var(--r);animation:batTimerBlink 1s ease-in-out infinite;}
 @keyframes batTimerBlink{0%,100%{opacity:1;}50%{opacity:.5;}}
-.bat-alert{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(6,9,15,.95);border:2px solid var(--r);border-radius:16px;padding:32px 48px;z-index:300;text-align:center;animation:batPulse .5s ease-in-out;}
-@keyframes batPulse{0%{transform:translate(-50%,-50%) scale(.8);opacity:0;}100%{transform:translate(-50%,-50%) scale(1);opacity:1;}}
-@media(max-width:768px){header{padding:8px 12px;flex-wrap:wrap;gap:6px;}main{padding:10px 12px;}.stats{grid-template-columns:repeat(2,1fr);}.tp{grid-template-columns:1fr;}.ccw{height:340px;}.cr{gap:5px;}.btn{padding:7px 12px;font-size:12px;}.pg{grid-template-columns:1fr;}}
+/* tablet: chart full width, controls in one row below it, order + log side by side */
+@media(max-width:999px){
+  .sim-grid{grid-template-columns:1fr 1fr;grid-template-rows:auto;grid-template-areas:"main main" "play play" "order log";}
+  .ccw{height:clamp(300px,52vh,460px);}
+  .play{flex-direction:row;align-items:center;}
+  .play-row{display:contents;}
+  .play .sg{order:1;flex:none;}
+  .play-row .sb{flex:none;}
+  .play #btn-nxt{order:2;flex:1;width:auto;}
+  #btn-exit{order:3;}
+}
+/* phone: one-row header, compact stats, floating play bar, everything in one column */
+@media(max-width:639px){
+  header{padding:8px 12px;gap:8px;}
+  .logo-t{display:none;}
+  .tab{padding:7px 12px;font-size:12px;}
+  main{padding:10px 12px 24px;}
+  .stats{grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-bottom:8px;}
+  .sc{grid-column:span 2;padding:8px 9px;border-radius:8px;}
+  .sc:nth-child(n+4){grid-column:span 3;}
+  .sl{font-size:9px;margin-bottom:2px;letter-spacing:.3px;}
+  .sv{font-size:14px;}.ss{font-size:10px;}
+  .sim-grid{display:flex;flex-direction:column;gap:8px;}
+  .ccw{height:clamp(230px,44vh,360px);}
+  .ch{padding:7px 10px;}
+  .legend{display:none;}
+  .cr{gap:5px;}
+  .btn{padding:7px 12px;font-size:12px;}
+  #play{position:sticky;bottom:8px;z-index:30;padding:8px;box-shadow:0 6px 24px rgba(0,0,0,.45);}
+  :root[data-theme="light"] #play{box-shadow:0 6px 22px rgba(20,40,70,.18);}
+  .play #btn-nxt{padding:10px 12px;font-size:14px;}
+  .acts{grid-template-columns:repeat(4,1fr);}
+  .acts .btn{padding:9px 2px;font-size:12px;}
+  #logc{min-height:0;}
+  #logc .lw{height:auto;max-height:200px;flex:none;}
+  .pg{grid-template-columns:1fr;}
+  .toast{bottom:92px;}
+}
+@media(hover:none){.kbd{display:none;}}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo"><img src="icon.png" alt="logo" style="width:30px;height:30px;border-radius:7px;">TradingSimulator</div>
+  <div class="logo"><img src="icon.png" alt="logo" style="width:30px;height:30px;border-radius:7px;"><span class="logo-t">TradingSimulator</span></div>
   <div class="tabs">
     <button class="tab on" data-t="sim">시뮬레이터</button>
     <button class="tab" data-t="bat">대결 모드</button>
     <button class="tab" data-t="pat">패턴 학습</button>
   </div>
-  <div style="display:flex;align-items:center;gap:10px;">
-    <button id="theme-toggle" title="테마 전환" style="background:var(--b2);border:1px solid var(--bd);color:var(--t1);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:inherit;">🌙</button>
-    <div class="m" style="font-size:10px;color:var(--t3)">Space/→=다음 B=매수 S=매도 D=숏 C=청산</div>
-  </div>
+  <button id="theme-toggle" title="테마 전환" aria-label="테마 전환" style="background:var(--b2);border:1px solid var(--bd);color:var(--t1);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:inherit;">🌙</button>
 </header>
 <main>
   <section class="sec on" id="sec-sim">
     <div class="stats">
-      <div class="sc"><div class="sl">총 자산 <button id="btn-reset" style="font-size:9px;padding:2px 6px;background:var(--rd);color:var(--r);border:1px solid rgba(239,68,68,.2);border-radius:4px;cursor:pointer;margin-left:6px;font-family:inherit;">초기화</button></div><div class="sv" id="v-tot">$10,000</div><div class="ss neu" id="v-tot-r">0.00%</div></div>
-      <div class="sc"><div class="sl">현금</div><div class="sv" id="v-cash">$10,000</div></div>
+      <div class="sc"><div class="sl">총 자산 <button id="btn-reset" title="자산을 $10,000으로 초기화" style="font-size:9px;padding:2px 6px;background:var(--rd);color:var(--r);border:1px solid rgba(239,68,68,.2);border-radius:4px;cursor:pointer;margin-left:6px;font-family:inherit;">초기화</button></div><div class="sv" id="v-tot">$10,000</div><div class="ss neu" id="v-tot-r">0.00%</div></div>
       <div class="sc"><div class="sl">평가 손익</div><div class="sv neu" id="v-pnl">$0</div><div class="ss neu" id="v-pnl-r">0.00%</div></div>
-      <div class="sc"><div class="sl">롱 보유</div><div class="sv" id="v-qty">0주</div><div class="ss neu" id="v-avg">평단가: —</div></div>
-      <div class="sc"><div class="sl">숏 보유</div><div class="sv" id="v-sq">0주</div><div class="ss neu" id="v-sa">평단가: —</div></div>
-      <div class="sc"><div class="sl">거래</div><div class="sv" id="v-trd">0</div><div class="ss neu" id="v-wr">승률: —</div></div>
+      <div class="sc"><div class="sl">보유</div><div class="sv" id="v-hold">없음</div><div class="ss neu" id="v-hold-s">평단가: —</div></div>
+      <div class="sc"><div class="sl">현금</div><div class="sv" id="v-cash">$10,000</div></div>
+      <div class="sc"><div class="sl">거래</div><div class="sv" id="v-trd">0회</div><div class="ss neu" id="v-wr">승률: —</div></div>
     </div>
-    <div class="cr">
-      <select id="sel-m"><option value="snp">S&P 500</option><option value="nas">NASDAQ</option><option value="kos">KOSPI</option><option value="kosd">KOSDAQ</option></select>
-      <button class="btn bp" id="btn-new">🎲 새 종목</button>
-      <div class="tf-grp">
-        <button class="tf-btn on" data-tf="D">일봉</button>
-        <button class="tf-btn" data-tf="W">주봉</button>
-        <button class="tf-btn" data-tf="M">월봉</button>
-      </div>
-      <div style="flex:1"></div>
-      <div class="sg">
-        <button class="sb on" data-s="1">1x</button>
-        <button class="sb" data-s="5">5x</button>
-        <button class="sb" data-s="20">20x</button>
-      </div>
-      <button class="btn bn" id="btn-nxt" disabled>다음 봉 ▶</button>
-      <button class="btn br" id="btn-exit" style="font-size:12px;padding:8px 14px;" disabled>종료</button>
-    </div>
-    <div class="cw">
-      <div class="ch">
-        <div class="sn"><span id="s-lbl">종목을 선택하세요</span><span class="sbg" id="s-tk">—</span></div>
-        <div style="display:flex;gap:12px;align-items:center;">
-          <div class="legend">
-            <span><svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#f59e0b" stroke-width="2"/></svg>MA5</span>
-            <span><svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#8b5cf6" stroke-width="2"/></svg>MA20</span>
-            <span><svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#ec4899" stroke-width="2"/></svg>MA60</span>
-            <span><svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#06b6d4" stroke-width="2"/></svg>MA120</span>
+    <div class="sim-grid">
+      <div class="sim-main">
+        <div class="cr">
+          <select id="sel-m" title="다음 종목을 고를 시장"><option value="snp">S&P 500</option><option value="nas">NASDAQ</option><option value="kos">KOSPI</option><option value="kosd">KOSDAQ</option></select>
+          <button class="btn bp" id="btn-new" title="랜덤 종목으로 새로 시작">🎲 새 종목</button>
+          <div class="tf-grp">
+            <button class="tf-btn on" data-tf="D">일봉</button>
+            <button class="tf-btn" data-tf="W">주봉</button>
+            <button class="tf-btn" data-tf="M">월봉</button>
           </div>
-          <span class="m" style="font-size:14px;font-weight:700;" id="p-disp">—</span>
+        </div>
+        <div class="cw">
+          <div class="ch">
+            <div class="sn"><span id="s-lbl">종목을 선택하세요</span><span class="sbg" id="s-tk">—</span></div>
+            <div style="display:flex;gap:12px;align-items:center;">
+              <div class="legend">
+                <span><svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#f59e0b" stroke-width="2"/></svg>MA5</span>
+                <span><svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#8b5cf6" stroke-width="2"/></svg>MA20</span>
+                <span><svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#ec4899" stroke-width="2"/></svg>MA60</span>
+                <span><svg width="14" height="2"><line x1="0" y1="1" x2="14" y2="1" stroke="#06b6d4" stroke-width="2"/></svg>MA120</span>
+              </div>
+              <span class="m" style="font-size:14px;font-weight:700;" id="p-disp">—</span>
+            </div>
+          </div>
+          <div class="ccw" id="chart-area">
+            <canvas id="cv"></canvas>
+            <div class="ov" id="c-ov"><div class="ic">📈</div><p>종목 이름을 가린 과거 차트로 매매를 연습해 보세요</p><button class="btn bp" id="ov-start">🎲 시작하기</button></div>
+            <div class="bat-sim-timer" id="bat-sim-timer"><div class="bst-icon">⏱</div><div><div class="bst-time" id="bst-time">00:00</div><div class="bst-label">대결 타이머</div></div></div>
+          </div>
         </div>
       </div>
-      <div class="ccw" id="chart-area">
-        <canvas id="cv"></canvas>
-        <div class="ov" id="c-ov"><div class="ic">📈</div><p>🎲 새 종목을 클릭하여 시작하세요</p></div>
-        <div class="bat-sim-timer" id="bat-sim-timer"><div class="bst-icon">⏱</div><div><div class="bst-time" id="bst-time">00:00</div><div class="bst-label">대결 타이머</div></div></div>
+      <div class="tc play" id="play">
+        <button class="btn bn" id="btn-nxt" title="다음 봉 보기 (Space · →) — 길게 누르면 계속 진행" disabled>다음 봉 ▶</button>
+        <div class="play-row">
+          <div class="sg" title="한 번에 넘길 봉 수">
+            <button class="sb on" data-s="1">1봉</button>
+            <button class="sb" data-s="5">5봉</button>
+            <button class="sb" data-s="20">20봉</button>
+          </div>
+          <button class="btn br" id="btn-exit" title="이 종목 종료하고 결과 보기" disabled>종료</button>
+        </div>
       </div>
-    </div>
-    <div class="tp">
-      <div class="tc">
+      <div class="tc" id="order">
         <h3>주문</h3>
-        <div class="ir"><label>수량</label><input type="number" id="i-qty" value="10" min="1"></div>
-        <div class="qb"><button data-p="10">10%</button><button data-p="25">25%</button><button data-p="50">50%</button><button data-p="100">전량</button></div>
-        <div style="display:flex;gap:4px;margin-bottom:7px;">
-          <span style="font-size:11px;color:var(--t3);line-height:28px;">레버리지</span>
-          <button class="lev-btn on" data-lev="1" style="padding:4px 10px;font-size:11px;font-family:Menlo,Consolas,monospace;background:var(--b1);border:1px solid var(--bd);color:var(--t3);border-radius:5px;cursor:pointer;transition:all .15s;">1x</button>
-          <button class="lev-btn" data-lev="2" style="padding:4px 10px;font-size:11px;font-family:Menlo,Consolas,monospace;background:var(--b1);border:1px solid var(--bd);color:var(--t3);border-radius:5px;cursor:pointer;transition:all .15s;">2x</button>
-          <button class="lev-btn" data-lev="3" style="padding:4px 10px;font-size:11px;font-family:Menlo,Consolas,monospace;background:var(--b1);border:1px solid var(--bd);color:var(--t3);border-radius:5px;cursor:pointer;transition:all .15s;">3x</button>
+        <div class="ir"><label for="i-qty">수량</label><input type="number" id="i-qty" value="10" min="1" inputmode="numeric"></div>
+        <div class="est" id="o-est"></div>
+        <div class="qb" title="보유 중이면 보유 수량 기준, 아니면 매수 가능 수량 기준"><button data-p="10">10%</button><button data-p="25">25%</button><button data-p="50">50%</button><button data-p="100">전량</button></div>
+        <div class="lev">
+          <span>레버리지</span>
+          <button class="lev-btn on" data-lev="1">1x</button>
+          <button class="lev-btn" data-lev="2">2x</button>
+          <button class="lev-btn" data-lev="3">3x</button>
         </div>
-        <div style="display:flex;gap:6px;">
-          <button class="btn bg" id="btn-buy" style="flex:1;justify-content:center;" disabled>매수(롱)</button>
-          <button class="btn br" id="btn-sell" style="flex:1;justify-content:center;" disabled>매도</button>
+        <div class="acts">
+          <button class="btn bg" id="btn-buy" title="매수 (B)" disabled>매수(롱)</button>
+          <button class="btn br" id="btn-sell" title="매도 (S)" disabled>매도</button>
+          <button class="btn b-short" id="btn-short" title="공매도 (D)" disabled>공매도(숏)</button>
+          <button class="btn b-cover" id="btn-cover" title="숏 청산 (C)" disabled>숏 청산</button>
         </div>
-        <div style="display:flex;gap:6px;margin-top:6px;">
-          <button class="btn" id="btn-short" style="flex:1;justify-content:center;background:rgba(234,179,8,.1);color:var(--y);border:1px solid rgba(234,179,8,.2);" disabled>공매도(숏)</button>
-          <button class="btn" id="btn-cover" style="flex:1;justify-content:center;background:rgba(6,182,212,.1);color:var(--cy);border:1px solid rgba(6,182,212,.2);" disabled>숏 청산</button>
-        </div>
+        <div class="kbd" title="키보드 단축키"><span><b>Space</b> 다음</span><span><b>B</b> 매수</span><span><b>S</b> 매도</span><span><b>D</b> 공매도</span><span><b>C</b> 숏청산</span></div>
       </div>
-      <div class="tc">
+      <div class="tc" id="logc">
         <h3>거래 기록</h3>
-        <div class="lw" id="log-w"><div style="color:var(--t3);font-size:12px;text-align:center;padding:16px 0;">거래 기록이 없습니다</div></div>
+        <div class="lw" id="log-w"><div class="lw-empty">거래 기록이 없습니다</div></div>
       </div>
     </div>
   </section>
   <section class="sec" id="sec-bat">
     <div style="max-width:600px;margin:0 auto;">
       <h2 style="font-size:22px;font-weight:700;margin-bottom:4px;text-align:center;">대결 모드</h2>
-      <p style="color:var(--t2);font-size:13px;margin-bottom:18px;text-align:center;line-height:1.6;">각자의 기기에서 같은 시간 동안 투자하여 더 높은 수익률을 달성하는 사람이 승리합니다.<br>타이머를 설정하고 시뮬레이터 탭에서 거래를 시작하세요!</p>
+      <p style="color:var(--t2);font-size:13px;margin-bottom:18px;text-align:center;line-height:1.6;">각자의 기기에서 같은 시간 동안 투자해 더 높은 수익률을 내는 사람이 이깁니다.</p>
       <div style="background:var(--b2);border:1px solid var(--bd);border-radius:12px;padding:24px;margin-bottom:14px;">
         <h3 style="font-size:13px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">타이머 설정</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
@@ -217,12 +292,10 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
       <div style="background:var(--b2);border:1px solid var(--bd);border-radius:12px;padding:20px;">
         <h3 style="font-size:13px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">대결 방법</h3>
         <div style="font-size:13px;color:var(--t2);line-height:1.8;">
-          <div>1. 참가자들이 각자 같은 타이머 시간을 설정합니다</div>
-          <div>2. 동시에 "시작" 버튼을 누릅니다</div>
-          <div>3. 시뮬레이터 탭으로 이동하여 새 종목을 선택합니다</div>
-          <div>4. 제한 시간 내에 최대한 높은 수익률을 달성합니다</div>
-          <div>5. 타이머 종료 시 자동으로 결과가 표시됩니다</div>
-          <div>6. 수익률을 비교하여 승자를 결정합니다</div>
+          <div>1. 참가자 모두 같은 시간을 고릅니다 (예: 5분)</div>
+          <div>2. 동시에 "시작"을 누르면 시뮬레이터로 이동하며 새 종목이 바로 시작됩니다</div>
+          <div>3. 시간 안에 자유롭게 거래하세요. 여러 종목을 넘겨가며 해도 됩니다</div>
+          <div>4. 시간이 끝나면 대결 수익률이 표시됩니다. 수익률이 높은 사람이 승리!</div>
         </div>
       </div>
     </div>
@@ -230,12 +303,13 @@ select{background:var(--b2);color:var(--t1);padding:8px 11px;border-radius:7px;b
   <section class="sec" id="sec-pat">
     <div style="margin-bottom:16px;">
       <h2 style="font-size:22px;font-weight:700;margin-bottom:4px;">차트 패턴 학습 (25 Patterns)</h2>
-      <p style="color:var(--t2);font-size:13px;">실전 봉차트 + 이동평균선으로 핵심 패턴을 학습하세요. 차트를 드래그/줌하여 자세히 살펴보세요.</p>
+      <p style="color:var(--t2);font-size:13px;">실전 봉차트 + 이동평균선으로 핵심 패턴을 학습하세요. 차트는 드래그로 이동하고, Ctrl(⌘)+휠이나 두 손가락으로 확대할 수 있습니다.</p>
     </div>
     <div class="pg" id="p-grid"></div>
   </section>
 </main>
-<div class="mb" id="modal"><div class="mo"><h2 id="m-t"></h2><p id="m-s"></p><div id="m-st" style="margin:14px 0;"></div><button class="btn bp" onclick="document.getElementById('modal').classList.remove('show')">확인</button></div></div>
+<div class="mb" id="modal" role="dialog" aria-modal="true" aria-labelledby="m-t"><div class="mo"><h2 id="m-t"></h2><p id="m-s"></p><div id="m-st" style="margin:14px 0 0;"></div><div class="m-btns"><button class="btn" id="m-close">닫기</button><button class="btn bp" id="m-next">🎲 새 종목</button></div></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 // ═══════════════════════════════════════
@@ -252,7 +326,8 @@ class CC{
   }
   _bindEvents(){
     const c=this.cv;
-    c.addEventListener('wheel',e=>{e.preventDefault();this._zm(e);},{passive:false});
+    // wheel:'ctrl' → plain wheel scrolls the page, Ctrl/⌘+wheel (or trackpad pinch) zooms
+    c.addEventListener('wheel',e=>{if(this.o.wheel==='ctrl'&&!(e.ctrlKey||e.metaKey))return;e.preventDefault();this._zm(e);},{passive:false});
     c.addEventListener('mousedown',e=>{this.drag=true;this.lx=e.clientX;this.ch=null;});
     c.addEventListener('mousemove',e=>{
       if(this.drag){this.sc+=e.clientX-this.lx;this.lx=e.clientX;this._clamp();this.render();}
@@ -502,26 +577,45 @@ async function fetchRealData(ticker, market){
   const period2=Math.floor(endDate.getTime()/1000);
   const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d`;
 
-  const proxyUrls=[
+  // Try every source at once and take the first valid answer (they used to be
+  // tried one after another with 10s timeouts each). corsproxy.io was dropped:
+  // it now rejects anonymous requests (403 keyless_legacy_url).
+  const sources=[
     url,
-    `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
   ];
-
-  for(const fetchUrl of proxyUrls){
-    try{
-      let signal;
-      try{signal=AbortSignal.timeout(10000);}
-      catch(e){const ctl=new AbortController();setTimeout(()=>ctl.abort(),10000);signal=ctl.signal;}
-      const resp=await fetch(fetchUrl,{signal});
-      if(!resp.ok) continue;
-      const data=await resp.json();
-      const candles=parseYahooData(data, market);
-      if(candles&&candles.length>100) return candles;
-    }catch(e){continue;}
-  }
-  return null;
+  const ctl=new AbortController();
+  const timer=setTimeout(()=>ctl.abort(),12000);
+  const one=async u=>{
+    const resp=await fetch(u,{signal:ctl.signal});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const candles=parseYahooData(await resp.json(),market);
+    if(!candles||candles.length<=100)throw new Error('no data');
+    return candles;
+  };
+  try{return await firstOk(sources.map(one));}
+  catch(e){return null;}
+  finally{clearTimeout(timer);ctl.abort();} // cancel the slower requests
 }
+// Resolve with the first promise that fulfils; reject only if all reject.
+function firstOk(ps){
+  return new Promise((res,rej)=>{let left=ps.length;if(!left)rej(new Error('empty'));
+    ps.forEach(p=>p.then(res,()=>{if(--left===0)rej(new Error('all failed'));}));});
+}
+
+// Background download of the next stock, so "새 종목" usually starts instantly
+// instead of waiting several seconds for the (slow, free) CORS proxy.
+let PF=null;
+function prefetch(mk){
+  const m=MKT[mk];
+  let stk=m.s[Math.floor(Math.random()*m.s.length)];
+  if(S.stk&&stk.t===S.stk.t&&m.s.length>1)stk=m.s[(m.s.indexOf(stk)+1)%m.s.length];
+  const job={mk,stk,data:null,done:false};
+  job.promise=fetchRealData(stk.t,mk).catch(()=>null).then(d=>{job.data=d;job.done=true;return d;});
+  PF=job;return job;
+}
+function takePrefetch(mk){const j=(PF&&PF.mk===mk)?PF:prefetch(mk);PF=null;return j;}
 
 function parseYahooData(data, market){
   try{
@@ -669,8 +763,12 @@ function applyTheme(theme){
 }
 const SAVED_RAW=safeGet('ts_cash');
 const SAVED_CASH=(SAVED_RAW!==null&&isFinite(parseFloat(SAVED_RAW)))?parseFloat(SAVED_RAW):null;
+// Trade count / wins / losses are saved with the cash so they don't reset on reload.
+const SAVED_STATS=(()=>{try{const o=JSON.parse(safeGet('ts_stats')||'null');return o&&[o.trd,o.w,o.l].every(n=>Number.isInteger(n)&&n>=0)?o:null;}catch(e){return null;}})();
 let S={mk:'snp',stk:null,rawAll:[],visCntDaily:0,tf:'D',
-  cash:SAVED_CASH!==null?SAVED_CASH:IC,pos:{q:0,a:0},trd:0,w:0,l:0,logs:[],spd:1,isRealData:false,stockStartAssets:SAVED_CASH!==null?SAVED_CASH:IC,
+  cash:SAVED_CASH!==null?SAVED_CASH:IC,pos:{q:0,a:0},
+  trd:SAVED_STATS?SAVED_STATS.trd:0,w:SAVED_STATS?SAVED_STATS.w:0,l:SAVED_STATS?SAVED_STATS.l:0,
+  logs:[],spd:1,isRealData:false,stockStartAssets:SAVED_CASH!==null?SAVED_CASH:IC,
   startDateIdx:0,shortPos:{q:0,a:0},leverage:1,ended:true,
   marks:[]}; // trade markers by daily index, so they survive timeframe switches
 let chart=null;
@@ -689,7 +787,36 @@ function addMark(t){S.marks.push({di:S.visCntDaily-1,t});syncMarks();}
 // Keep leverage buttons in sync with S.leverage.
 function setLev(lev){
   S.leverage=lev;
-  document.querySelectorAll('.lev-btn').forEach(x=>{const on=+x.dataset.lev===lev;x.classList.toggle('on',on);x.style.color=on?'var(--y)':'var(--t3)';x.style.borderColor=on?'var(--y)':'var(--bd)';});
+  document.querySelectorAll('.lev-btn').forEach(x=>x.classList.toggle('on',+x.dataset.lev===lev));
+}
+
+const fmtUsd=v=>`${v<0?'-':''}$${Math.floor(Math.abs(v)).toLocaleString()}`;
+function fmtPx(p){return MKT[S.mk].c==='$'?`$${p.toFixed(2)}`:`₩${Math.round(p).toLocaleString()}`;}
+// Unrealized P/L, total assets and cost basis in USD (₩ positions converted).
+function calcAssets(){
+  const p=curP(),lfx=S.pos.fx||fxOf(S.mk),sfx=S.shortPos.fx||fxOf(S.mk);
+  const lp=S.pos.q>0?(p-S.pos.a)*S.pos.q*(S.pos.lev||1):0;
+  const sp=S.shortPos.q>0?(S.shortPos.a-p)*S.shortPos.q*(S.shortPos.lev||1):0;
+  const longEv=S.pos.q>0?(S.pos.a*S.pos.q+lp)/lfx:0;
+  const shortEv=S.shortPos.q>0?(S.shortPos.a*S.shortPos.q+sp)/sfx:0;
+  return {upnl:lp/lfx+sp/sfx,tot:S.cash+longEv+shortEv,cost:(S.pos.a*S.pos.q)/lfx+(S.shortPos.a*S.shortPos.q)/sfx};
+}
+// Close every open position at the current price. Leveraged losses are capped
+// at the money put in (no debt). Used when leaving a stock and at game end.
+function closeAll(){
+  const p=curP();
+  if(S.pos.q>0){const pnl=(p-S.pos.a)*S.pos.q*(S.pos.lev||1);S.cash+=Math.max(0,S.pos.a*S.pos.q+pnl)/(S.pos.fx||1);if(pnl>0)S.w++;else if(pnl<0)S.l++;}
+  if(S.shortPos.q>0){const pnl=(S.shortPos.a-p)*S.shortPos.q*(S.shortPos.lev||1);S.cash+=Math.max(0,S.shortPos.a*S.shortPos.q+pnl)/(S.shortPos.fx||1);if(pnl>0)S.w++;else if(pnl<0)S.l++;}
+  S.pos={q:0,a:0};S.shortPos={q:0,a:0};
+}
+function setTradeEnabled(on){
+  ['btn-nxt','btn-buy','btn-sell','btn-short','btn-cover','btn-exit'].forEach(id=>document.getElementById(id).disabled=!on);
+}
+// Short non-blocking message (replaces alert(), which froze keyboard play).
+let toastT=null;
+function toast(msg,err){
+  const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');
+  clearTimeout(toastT);toastT=setTimeout(()=>{t.className='toast'+(err?' err':'');},2200);
 }
 
 function getVisibleData(){
@@ -699,52 +826,50 @@ function getVisibleData(){
   return daily;
 }
 
-function showLoading(show){
+let skipWait=null;
+function showLoading(){
   const ov=document.getElementById('c-ov');
-  if(show){
-    ov.style.display='flex';
-    ov.innerHTML='<div class="ic">⏳</div><p>실제 주가 데이터를 불러오는 중...</p>';
-  }
+  ov.style.display='flex';
+  ov.innerHTML='<div class="ic">⏳</div><p>실제 주가 차트를 불러오는 중...</p><button class="ov-skip" id="ov-skip">기다리지 않고 가상 차트로 시작</button>';
 }
 
+let starting=false;
 async function startNew(){
-  // sell any existing position at current price before switching
-  if(S.pos.q>0&&S.stk){
-    const p=curP();const lev=S.pos.lev||1;
-    const basePnl=(p-S.pos.a)*S.pos.q;const levPnl=basePnl*lev;
-    S.cash+=Math.max(0,S.pos.a*S.pos.q+levPnl)/(S.pos.fx||1);
-    if(levPnl>0)S.w++;else if(levPnl<0)S.l++;
-    S.pos={q:0,a:0};
-  }
-  // close short position
-  if(S.shortPos.q>0&&S.stk){
-    const p=curP();const lev=S.shortPos.lev||1;
-    const basePnl=(S.shortPos.a-p)*S.shortPos.q;const levPnl=basePnl*lev;
-    S.cash+=Math.max(0,S.shortPos.a*S.shortPos.q+levPnl)/(S.shortPos.fx||1);
-    if(levPnl>0)S.w++;else if(levPnl<0)S.l++;
-    S.shortPos={q:0,a:0};
-  }
+  if(starting)return;
+  // Broke during a battle: there is nothing to trade with until the battle ends
+  // (starting a stock would only show an instant bankruptcy for an unplayed chart).
+  if(BAT.running&&calcAssets().tot<1){toast('자산이 바닥났습니다. 대결이 끝나면 $10,000으로 다시 시작할 수 있어요',true);return;}
+  starting=true;
+  document.getElementById('modal').classList.remove('show');
+  // Leaving a stock mid-game: close its positions and say what it was.
+  if(S.stk&&!S.ended){
+    closeAll();
+    const r=S.stockStartAssets>0?(S.cash-S.stockStartAssets)/S.stockStartAssets*100:0;
+    toast(`이전 종목: ${S.stk.n} (${S.stk.t}) · ${r>=0?'+':''}${r.toFixed(2)}%`);
+  }else closeAll();
   // The market dropdown only takes effect for the next stock; applying it
   // mid-game re-priced the current stock with another market's FX/currency.
   S.mk=document.getElementById('sel-m').value;
   const m=MKT[S.mk];
-  S.stk=m.s[Math.floor(Math.random()*m.s.length)];
+  const job=takePrefetch(S.mk);
+  S.stk=job.stk;
 
   // Disable buttons during loading
   S.ended=true;
-  ['btn-new','btn-nxt','btn-buy','btn-sell','btn-short','btn-cover','btn-exit'].forEach(id=>document.getElementById(id).disabled=true);
-  showLoading(true);
+  setTradeEnabled(false);document.getElementById('btn-new').disabled=true;
 
   try{
-    // Try to fetch real historical data
-    S.isRealData=false;
-    let realData=null;
-    try{
-      realData=await fetchRealData(S.stk.t, S.mk);
-    }catch(e){}
-
-    if(realData&&realData.length>100){
-      S.rawAll=realData;
+    // Real data downloaded in the background is used right away; otherwise
+    // wait for it (max 10s, or until the player skips) and fall back to a
+    // synthetic chart.
+    let data=job.done?job.data:null;
+    if(!job.done){
+      showLoading();
+      data=await Promise.race([job.promise,new Promise(r=>{skipWait=()=>r(null);setTimeout(()=>r(null),10000);})]);
+      skipWait=null;
+    }
+    if(data&&data.length>100){
+      S.rawAll=data;
       S.isRealData=true;
     }else{
       // Fallback to synthetic data
@@ -754,11 +879,12 @@ async function startNew(){
 
     // start showing 55-65% of data, hide rest as "future"
     S.visCntDaily=Math.floor(S.rawAll.length*.55)+Math.floor(Math.random()*Math.min(100,S.rawAll.length*.1));
-    // keep cash (don't reset to IC), only reset on first run
-    if(S.cash===0&&S.trd===0)S.cash=IC;
+    // Out of money (e.g. after a bankruptcy): start over instead of leaving the player stuck at $0.
+    // (Not during a battle: a free refill would erase the loss from the battle score.)
+    if(S.cash<1&&!BAT.running){S.cash=IC;toast('자산이 바닥나 $10,000으로 다시 시작합니다');}
     S.stockStartAssets=S.cash;
     S.startDateIdx=S.visCntDaily>0?S.visCntDaily-1:0;
-    S.shortPos={q:0,a:0};setLev(1);
+    setLev(1);
     S.logs=[];S.marks=[];renderLogs(); // clear the previous stock's trade log on screen too
     document.getElementById('c-ov').style.display='none';
     document.getElementById('s-lbl').textContent='???';
@@ -767,15 +893,12 @@ async function startNew(){
     chart.mk=[];chart.hideDates=true;
     S.ended=false;
     renderChart();updateUI();
-    document.getElementById('btn-nxt').disabled=false;
-    document.getElementById('btn-buy').disabled=false;
-    document.getElementById('btn-sell').disabled=false;
-    document.getElementById('btn-short').disabled=false;
-    document.getElementById('btn-cover').disabled=false;
-    document.getElementById('btn-exit').disabled=false;
+    setTradeEnabled(true);
   }finally{
+    starting=false;
     // never leave "새 종목" stuck disabled if setup throws
     document.getElementById('btn-new').disabled=false;
+    prefetch(S.mk); // get the next stock ready while this one is played
   }
 }
 
@@ -804,11 +927,7 @@ function advanceOneDaily(){
     if(S.pos.q>0||S.shortPos.q>0)addLog(`SPLIT 1:${ratio}`,S.pos.q+S.shortPos.q,curCandle.close);
   }
   if(curCandle&&parseDt(curCandle.time)>=MAX_DATE){showResult(false);return false;}
-  const p=curP();
-  const longLev=S.pos.lev||1;const longBasePnl=S.pos.q>0?(p-S.pos.a)*S.pos.q:0;const longEv=S.pos.q>0?(S.pos.a*S.pos.q+longBasePnl*longLev)/(S.pos.fx||1):0;
-  const shortLev=S.shortPos.lev||1;const shortBasePnl=S.shortPos.q>0?(S.shortPos.a-p)*S.shortPos.q:0;const shortEv=S.shortPos.q>0?(S.shortPos.a*S.shortPos.q+shortBasePnl*shortLev)/(S.shortPos.fx||1):0;
-  const tot=S.cash+longEv+shortEv;
-  if(tot<=0){showResult(true);return false;}
+  if(calcAssets().tot<=0){showResult(true);return false;}
   return true;
 }
 
@@ -840,7 +959,7 @@ function doBuy(){
   if(S.ended||!chart)return;
   const q=parseInt(document.getElementById('i-qty').value)||0;if(q<=0)return;
   const p=curP();if(p<=0)return;
-  const cost=usd(p)*q;if(cost>S.cash){alert('잔고 부족!');return;}
+  const cost=usd(p)*q;if(cost>S.cash){toast(`잔고가 부족합니다 (필요 ${fmtUsd(cost)})`,true);return;}
   const lev=S.pos.q>0?(S.pos.lev||1):S.leverage;
   S.cash-=cost;const tq=S.pos.q+q;S.pos.a=(S.pos.a*S.pos.q+p*q)/tq;S.pos.q=tq;S.pos.lev=lev;S.pos.fx=fxOf(S.mk);S.trd++;
   addMark('buy');
@@ -850,7 +969,7 @@ function doBuy(){
 function doSell(){
   if(S.ended||!chart)return;
   const iq=parseInt(document.getElementById('i-qty').value)||0;
-  const q=Math.min(iq,S.pos.q);if(q<=0){alert('보유 수량 없음!');return;}
+  const q=Math.min(iq,S.pos.q);if(q<=0){toast('매도할 보유 수량이 없습니다',true);return;}
   const p=curP();if(p<=0)return;
   const lev=S.pos.lev||1;
   const basePnl=(p-S.pos.a)*q;
@@ -867,7 +986,7 @@ function doShort(){
   if(S.ended||!chart)return;
   const q=parseInt(document.getElementById('i-qty').value)||0;if(q<=0)return;
   const p=curP();if(p<=0)return;
-  const margin=usd(p)*q;if(margin>S.cash){alert('잔고 부족! (증거금 필요)');return;}
+  const margin=usd(p)*q;if(margin>S.cash){toast(`증거금이 부족합니다 (필요 ${fmtUsd(margin)})`,true);return;}
   const lev=S.shortPos.q>0?(S.shortPos.lev||1):S.leverage;
   S.cash-=margin;
   const tq=S.shortPos.q+q;S.shortPos.a=(S.shortPos.a*S.shortPos.q+p*q)/tq;S.shortPos.q=tq;S.shortPos.lev=lev;S.shortPos.fx=fxOf(S.mk);S.trd++;
@@ -878,7 +997,7 @@ function doShort(){
 function doCover(){
   if(S.ended||!chart)return;
   const iq=parseInt(document.getElementById('i-qty').value)||0;
-  const q=Math.min(iq,S.shortPos.q);if(q<=0){alert('숏 포지션 없음!');return;}
+  const q=Math.min(iq,S.shortPos.q);if(q<=0){toast('청산할 숏 포지션이 없습니다',true);return;}
   const p=curP();if(p<=0)return;
   const lev=S.shortPos.lev||1;
   const basePnl=(S.shortPos.a-p)*q;
@@ -892,9 +1011,8 @@ function doCover(){
 }
 
 function addLog(a,q,p){
-  const m=MKT[S.mk];const ps=m.c==='$'?`$${p.toFixed(2)}`:`₩${Math.round(p).toLocaleString()}`;
   const c=S.rawAll[S.visCntDaily-1];
-  S.logs.unshift({a,q,p:ps,t:c?c.time:''});renderLogs();
+  S.logs.unshift({a,q,p:fmtPx(p),t:c?c.time:''});renderLogs();
 }
 function logLabel(a){
   if(a.startsWith('BUY'))return{cls:'lb',txt:'매수'};
@@ -906,55 +1024,53 @@ function logLabel(a){
 }
 function renderLogs(){
   const el=document.getElementById('log-w');
-  if(!S.logs.length){el.innerHTML='<div style="color:var(--t3);font-size:12px;text-align:center;padding:16px 0;">거래 기록이 없습니다</div>';return;}
+  if(!S.logs.length){el.innerHTML='<div class="lw-empty">거래 기록이 없습니다</div>';return;}
   el.innerHTML=S.logs.slice(0,30).map(l=>{const lb=logLabel(l.a);return `<div class="le"><span class="lt">${l.t}</span><span class="la ${lb.cls}">${lb.txt}</span><span style="flex:1;font-family:monospace;font-size:12px;">${l.q}주 × ${l.p}</span></div>`;}).join('');
 }
 
 function updateUI(){
-  const p=curP();
-  // FX of each open position (₩-priced markets converted to USD cash)
-  const lfx=S.pos.fx||fxOf(S.mk),sfx=S.shortPos.fx||fxOf(S.mk);
-  // Long PnL with leverage (values converted to USD)
-  const longLev=S.pos.lev||1;
-  const longBasePnl=S.pos.q>0?(p-S.pos.a)*S.pos.q:0;
-  const longLevPnl=(longBasePnl*longLev)/lfx;
-  const longEv=S.pos.q>0?(S.pos.a*S.pos.q+longBasePnl*longLev)/lfx:0;
-  // Short PnL with leverage (values converted to USD)
-  const shortLev=S.shortPos.lev||1;
-  const shortBasePnl=S.shortPos.q>0?(S.shortPos.a-p)*S.shortPos.q:0;
-  const shortLevPnl=(shortBasePnl*shortLev)/sfx;
-  const shortEv=S.shortPos.q>0?(S.shortPos.a*S.shortPos.q+shortBasePnl*shortLev)/sfx:0;
-  const upnl=longLevPnl+shortLevPnl;
-  const tot=S.cash+longEv+shortEv,tr=(tot-IC)/IC*100;
-  const denom=(S.pos.a*S.pos.q)/lfx+(S.shortPos.a*S.shortPos.q)/sfx;
-  const upct=denom>0?upnl/denom*100:0;
-  const f=v=>`${v<0?'-':''}$${Math.floor(Math.abs(v)).toLocaleString()}`;
-  document.getElementById('v-tot').textContent=f(tot);
-  const tre=document.getElementById('v-tot-r');tre.textContent=`${tr>=0?'+':''}${tr.toFixed(2)}%`;tre.className=`ss ${tr>=0?'pos':'neg'}`;
-  document.getElementById('v-cash').textContent=f(S.cash);
-  const pe=document.getElementById('v-pnl');pe.textContent=`${upnl>=0?'+':''}${f(upnl)}`;pe.className=`sv ${upnl>=0?'pos':'neg'}`;
-  const pre=document.getElementById('v-pnl-r');pre.textContent=`${upct>=0?'+':''}${upct.toFixed(2)}%`;pre.className=`ss ${upct>=0?'pos':'neg'}`;
-  document.getElementById('v-qty').textContent=`${S.pos.q}주${longLev>1?' ('+longLev+'x)':''}`;
-  const m=MKT[S.mk];const as=S.pos.a>0?(m.c==='$'?`$${S.pos.a.toFixed(2)}`:`₩${Math.round(S.pos.a).toLocaleString()}`):'—';
-  document.getElementById('v-avg').textContent=`평단가: ${as}`;
-  // Short position display
-  document.getElementById('v-sq').textContent=`${S.shortPos.q}주${shortLev>1?' ('+shortLev+'x)':''}`;
-  const sa=S.shortPos.a>0?(m.c==='$'?`$${S.shortPos.a.toFixed(2)}`:`₩${Math.round(S.shortPos.a).toLocaleString()}`):'—';
-  document.getElementById('v-sa').textContent=`평단가: ${sa}`;
-  document.getElementById('v-trd').textContent=S.trd;
-  const tt=S.w+S.l;document.getElementById('v-wr').textContent=tt>0?`승률: ${(S.w/tt*100).toFixed(0)}%`:'승률: —';
+  const {upnl,tot,cost}=calcAssets(),tr=(tot-IC)/IC*100;
+  const upct=cost>0?upnl/cost*100:0;
+  const set=(id,txt,cls)=>{const e=document.getElementById(id);e.textContent=txt;if(cls)e.className=cls;};
+  set('v-tot',fmtUsd(tot));
+  set('v-tot-r',`${tr>=0?'+':''}${tr.toFixed(2)}%`,`ss ${tr>0.004?'pos':tr<-0.004?'neg':'neu'}`);
+  set('v-cash',fmtUsd(S.cash));
+  set('v-pnl',`${upnl>=0?'+':''}${fmtUsd(upnl)}`,`sv ${upnl>0?'pos':upnl<0?'neg':'neu'}`);
+  set('v-pnl-r',`${upct>=0?'+':''}${upct.toFixed(2)}%`,`ss ${upct>0?'pos':upct<0?'neg':'neu'}`);
+  // Long and short holdings share one card (shorts are rare; a second always-0 card was clutter)
+  const L=S.pos.q>0,SH=S.shortPos.q>0,lx=n=>n>1?` ${n}x`:'';
+  let hold='없음',holdS='평단가: —';
+  if(L&&SH){hold=`롱 ${S.pos.q} · 숏 ${S.shortPos.q}`;holdS=`${fmtPx(S.pos.a)} / ${fmtPx(S.shortPos.a)}`;}
+  else if(L){hold=`롱 ${S.pos.q}주${lx(S.pos.lev||1)}`;holdS=`평단가: ${fmtPx(S.pos.a)}`;}
+  else if(SH){hold=`숏 ${S.shortPos.q}주${lx(S.shortPos.lev||1)}`;holdS=`평단가: ${fmtPx(S.shortPos.a)}`;}
+  set('v-hold',hold);set('v-hold-s',holdS);
+  set('v-trd',`${S.trd}회`);
+  const tt=S.w+S.l;set('v-wr',tt>0?`승률: ${(S.w/tt*100).toFixed(0)}%`:'승률: —');
+  updateEst();
   // Save cash plus position cost basis so a mid-game reload doesn't lose invested principal
-  safeSet('ts_cash',String(S.cash+(S.pos.a*S.pos.q)/(S.pos.fx||1)+(S.shortPos.a*S.shortPos.q)/(S.shortPos.fx||1)));
+  safeSet('ts_cash',String(S.cash+cost));
+  safeSet('ts_stats',JSON.stringify({trd:S.trd,w:S.w,l:S.l}));
   // Check for leveraged liquidation
   if(tot<=0&&S.stk&&!S.ended){showResult(true);}
 }
+// "≈ order value · max shares" under the quantity box
+function updateEst(){
+  const el=document.getElementById('o-est'),p=curP();
+  if(S.ended||p<=0){el.textContent='';return;}
+  const q=parseInt(document.getElementById('i-qty').value)||0,up=usd(p);
+  el.textContent=`≈ ${fmtUsd(up*Math.max(0,q))} · 최대 ${Math.floor(S.cash/up).toLocaleString()}주`;
+}
+
+function openModal(){
+  document.getElementById('modal').classList.add('show');
+  setTimeout(()=>document.getElementById('m-next').focus(),0); // Enter = 다음 종목
+}
+function closeModal(){document.getElementById('modal').classList.remove('show');}
 
 function showResult(bankrupt=false){
   if(S.ended)return;
   S.ended=true;
-  if(S.pos.q>0){const p=curP();const lev=S.pos.lev||1;const basePnl=(p-S.pos.a)*S.pos.q;const levPnl=basePnl*lev;S.cash+=Math.max(0,S.pos.a*S.pos.q+levPnl)/(S.pos.fx||1);if(levPnl>0)S.w++;else if(levPnl<0)S.l++;S.pos={q:0,a:0};}
-  // close short position
-  if(S.shortPos.q>0){const p=curP();const lev=S.shortPos.lev||1;const basePnl=(S.shortPos.a-p)*S.shortPos.q;const levPnl=basePnl*lev;S.cash+=Math.max(0,S.shortPos.a*S.shortPos.q+levPnl)/(S.shortPos.fx||1);if(levPnl>0)S.w++;else if(levPnl<0)S.l++;S.shortPos={q:0,a:0};}
+  closeAll();
   const stockProfit=S.cash-S.stockStartAssets;
   const stockReturn=S.stockStartAssets>0?(stockProfit/S.stockStartAssets*100):0;
   const ip=stockProfit>=0;
@@ -979,23 +1095,18 @@ function showResult(bankrupt=false){
   // Unhide dates on chart
   if(chart)chart.hideDates=false;
   if(chart)chart.render();
-  const tt=S.w+S.l;
+  const tt=S.w+S.l,trades=S.logs.filter(l=>!l.a.startsWith('SPLIT')).length;
   document.getElementById('m-st').innerHTML=`
-    <div class="sr"><span>종목</span><span class="m">${S.stk.n} (${S.stk.t})</span></div>
     <div class="sr"><span>투자 기간</span><span class="m">${startDate} ~ ${endDate}</span></div>
     <div class="sr"><span>기간</span><span class="m">${periodStr}</span></div>
-    <div class="sr"><span>수익</span><span class="m ${ip?'pos':'neg'}">${stockProfit>=0?'+':''}$${Math.floor(Math.abs(stockProfit)).toLocaleString()}${stockProfit<0?' (손실)':''}</span></div>
+    <div class="sr"><span>수익</span><span class="m ${ip?'pos':'neg'}">${stockProfit>=0?'+':'-'}$${Math.floor(Math.abs(stockProfit)).toLocaleString()}</span></div>
     <div class="sr"><span>수익률</span><span class="m ${ip?'pos':'neg'}">${stockReturn>=0?'+':''}${stockReturn.toFixed(2)}%</span></div>
-    <div class="sr"><span>총 거래</span><span class="m">${S.trd}회</span></div>
-    <div class="sr"><span>승률</span><span class="m">${tt>0?(S.w/tt*100).toFixed(0)+'%':'—'}</span></div>
-    ${bankrupt?'<div class="sr" style="color:var(--r);font-weight:700;">⚠️ 총 자산이 0 이하로 파산했습니다</div>':''}`;
-  document.getElementById('modal').classList.add('show');
-  document.getElementById('btn-nxt').disabled=true;
-  document.getElementById('btn-buy').disabled=true;
-  document.getElementById('btn-sell').disabled=true;
-  document.getElementById('btn-short').disabled=true;
-  document.getElementById('btn-cover').disabled=true;
-  document.getElementById('btn-exit').disabled=true;
+    <div class="sr"><span>이번 종목 거래</span><span class="m">${trades}회</span></div>
+    <div class="sr"><span>누적 승률</span><span class="m">${tt>0?(S.w/tt*100).toFixed(0)+'%':'—'}</span></div>
+    ${bankrupt?'<div class="sr" style="color:var(--r);font-weight:700;">⚠️ 총 자산이 0 이하로 파산했습니다</div>':''}
+    ${S.isRealData?'':'<div class="m-note">※ 실제 주가를 불러오지 못해 가상 차트로 진행했습니다</div>'}`;
+  openModal();
+  setTradeEnabled(false);
   updateUI();
 }
 
@@ -1206,9 +1317,10 @@ const PATS=[
    tip:'윗꼬리가 몸통의 2배 이상이면 강력한 매도 신호. 다음 봉 음봉 확인 후 매도.'},
 ];
 
-let patCharts=[];
+let patCharts=[],patsRendered=false;
 
 function renderPats(){
+  patsRendered=true; // generated once per visit; theme/resize just redraw them
   const g=document.getElementById('p-grid');
   g.innerHTML=PATS.map((p,i)=>{
     const tl=p.tp==='bull'?'상승':p.tp==='bear'?'하락':'중립';
@@ -1220,8 +1332,8 @@ function renderPats(){
     PATS.forEach((p,i)=>{
       const cv=document.getElementById(`pc${i}`);if(!cv)return;
       const ct=chartColorsFor(currentTheme());
-      const c=new CC(cv,{bg:ct.bg,gc:ct.gc,tc:ct.tc,svol:true,sma:true,map:[5,20],mac:['#f59e0b','#8b5cf6'],rp:44,bp:20,tp:8});
-      c.mnw=1.5;c.mxw=18;
+      const c=new CC(cv,{bg:ct.bg,gc:ct.gc,tc:ct.tc,svol:true,sma:true,map:[5,20],mac:['#f59e0b','#8b5cf6'],rp:44,bp:8,tp:8,wheel:'ctrl'});
+      c.mnw=1.5;c.mxw=18;c.hideDates=true; // example dates carry no meaning
       const result=genPat(p.id);
       const zoneColor=p.tp==='bull'?'rgba(34,197,94,.06)':p.tp==='bear'?'rgba(239,68,68,.06)':'rgba(59,130,246,.06)';
       const zoneBorder=p.tp==='bull'?'rgba(34,197,94,.25)':p.tp==='bear'?'rgba(239,68,68,.25)':'rgba(59,130,246,.25)';
@@ -1240,23 +1352,46 @@ function renderPats(){
 // ═══════════════════════════════════════
 // EVENTS
 // ═══════════════════════════════════════
-document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
-  document.querySelectorAll('.sec').forEach(x=>x.classList.remove('on'));
-  t.classList.add('on');document.getElementById(`sec-${t.dataset.t}`).classList.add('on');
-  if(t.dataset.t==='pat')renderPats();
-  if(t.dataset.t==='sim'&&chart){chart._rs();chart.render();}
-}));
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.t===name));
+  document.querySelectorAll('.sec').forEach(x=>x.classList.toggle('on',x.id===`sec-${name}`));
+  if(name==='pat'){if(!patsRendered)renderPats();else patCharts.forEach(c=>c.resize());}
+  if(name==='sim'&&chart){chart._rs();chart.render();}
+}
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>showTab(t.dataset.t)));
 document.getElementById('btn-new').addEventListener('click',startNew);
-document.getElementById('btn-nxt').addEventListener('click',()=>advance(S.spd));
+// Chart overlay: "시작하기" on first visit, "가상 차트로 시작" while loading
+document.getElementById('c-ov').addEventListener('click',e=>{
+  if(e.target.id==='ov-start')startNew();
+  else if(e.target.id==='ov-skip'&&skipWait)skipWait();
+});
+// The market applies to the next stock, so start downloading one from it now.
+document.getElementById('sel-m').addEventListener('change',e=>{if(!starting)prefetch(e.target.value);});
+// 다음 봉: click = one step, press and hold = keep going (handy on phones)
+(()=>{
+  const b=document.getElementById('btn-nxt');let delay=null,rep=null,held=false;
+  const stop=()=>{clearTimeout(delay);clearInterval(rep);delay=rep=null;};
+  b.addEventListener('pointerdown',e=>{
+    if(e.button!==0||b.disabled)return;held=false;stop();
+    delay=setTimeout(()=>{held=true;advance(S.spd);rep=setInterval(()=>{if(b.disabled){stop();return;}advance(S.spd);},110);},450);
+  });
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,stop));
+  b.addEventListener('click',()=>{if(held){held=false;return;}advance(S.spd);}); // a hold already advanced
+  b.addEventListener('contextmenu',e=>e.preventDefault()); // no long-press menu on phones
+})();
 document.getElementById('btn-buy').addEventListener('click',doBuy);
 document.getElementById('btn-sell').addEventListener('click',doSell);
 document.getElementById('btn-short').addEventListener('click',doShort);
 document.getElementById('btn-cover').addEventListener('click',doCover);
 document.getElementById('btn-exit').addEventListener('click',()=>{if(S.stk)showResult(false);});
+// Result dialog: 닫기 / 새 종목, Esc or a click outside closes it
+document.getElementById('m-close').addEventListener('click',closeModal);
+document.getElementById('m-next').addEventListener('click',()=>{closeModal();startNew();});
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
 // Leverage buttons
 document.querySelectorAll('.lev-btn').forEach(b=>b.addEventListener('click',()=>setLev(parseInt(b.dataset.lev))));
 document.addEventListener('keydown',e=>{
+  if(document.getElementById('modal').classList.contains('show')){if(e.key==='Escape')closeModal();return;}
   // Ignore browser shortcuts (Ctrl+C used to cover a short), form fields, and
   // other tabs (Space was hijacked there and the page couldn't scroll).
   if(e.ctrlKey||e.metaKey||e.altKey)return;
@@ -1266,17 +1401,15 @@ document.addEventListener('keydown',e=>{
   if(e.key==='b'||e.key==='B')doBuy();if(e.key==='s'||e.key==='S')doSell();
   if(e.key==='d'||e.key==='D')doShort();if(e.key==='c'||e.key==='C')doCover();
 });
+document.getElementById('i-qty').addEventListener('input',updateEst);
 document.querySelectorAll('.qb button').forEach(b=>b.addEventListener('click',()=>{
   // price in USD so ₩-priced stocks size against the USD cash balance
   const p=usd(curP());if(p<=0)return;const pct=parseInt(b.dataset.p);
-  if(S.pos.q>0||S.shortPos.q>0){
-    // if holding any position, calculate based on larger position
-    const maxQ=Math.max(S.pos.q,S.shortPos.q);
-    if(maxQ>0){document.getElementById('i-qty').value=Math.max(1,Math.floor(maxQ*pct/100));}
-    else{document.getElementById('i-qty').value=Math.max(1,Math.floor(S.cash/p*pct/100));}
-  }else{
-    document.getElementById('i-qty').value=Math.max(1,Math.floor(S.cash/p*pct/100));
-  }
+  const maxQ=Math.max(S.pos.q,S.shortPos.q);
+  // holding a position → % of the position (to sell); otherwise % of buying power
+  const q=maxQ>0?Math.floor(maxQ*pct/100):Math.floor(S.cash/p*pct/100);
+  document.getElementById('i-qty').value=Math.max(1,q);
+  updateEst();
 }));
 document.querySelectorAll('.sb').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.sb').forEach(x=>x.classList.remove('on'));b.classList.add('on');S.spd=parseInt(b.dataset.s);
@@ -1289,25 +1422,19 @@ document.querySelectorAll('.tf-btn').forEach(b=>b.addEventListener('click',()=>{
 }));
 // Reset total assets
 document.getElementById('btn-reset').addEventListener('click',()=>{
-  if(!confirm('총 자산을 $10,000으로 초기화하시겠습니까?'))return;
+  if(BAT.running){toast('대결 중에는 초기화할 수 없습니다',true);return;} // would inflate the battle score
+  if(!confirm('총 자산과 거래 기록을 $10,000 상태로 초기화하시겠습니까?'))return;
   S.cash=IC;S.pos={q:0,a:0};S.shortPos={q:0,a:0};S.trd=0;S.w=0;S.l=0;S.logs=[];S.stockStartAssets=IC;
   setLev(1);
-  safeSet('ts_cash',IC.toString());
   updateUI();renderLogs();
+  toast('$10,000으로 초기화했습니다');
 });
-// Initialize display with saved cash
-if(SAVED_CASH!==null){
-  const sv=SAVED_CASH;
-  const fsv=`${sv<0?'-':''}$${Math.floor(Math.abs(sv)).toLocaleString()}`;
-  document.getElementById('v-tot').textContent=fsv;
-  document.getElementById('v-cash').textContent=fsv;
-  const tr=(sv-IC)/IC*100;
-  const tre=document.getElementById('v-tot-r');tre.textContent=`${tr>=0?'+':''}${tr.toFixed(2)}%`;tre.className=`ss ${tr>=0?'pos':'neg'}`;
-}
+// Show the saved balance and stats right away
+updateUI();
 // ═══════════════════════════════════════
 // BATTLE MODE TIMER
 // ═══════════════════════════════════════
-let BAT={totalSec:0,remainSec:0,interval:null,running:false,barEl:null,endAt:0,warned:false,hideT:null};
+let BAT={totalSec:0,remainSec:0,interval:null,running:false,barEl:null,endAt:0,warned:false,hideT:null,startAssets:IC};
 function batFmt(sec){const m=Math.floor(sec/60),s=sec%60;return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;}
 function batUpdateDisplay(){
   document.getElementById('bat-timer-val').textContent=batFmt(BAT.remainSec);
@@ -1327,6 +1454,8 @@ function batSetTime(min){
   document.getElementById('bat-timer-status').textContent=`${min}분 설정됨`;
   document.getElementById('bat-timer-status').style.color='var(--ac)';
   document.getElementById('bat-start').disabled=false;
+  // show which preset is chosen
+  document.querySelectorAll('.bat-time').forEach(x=>x.classList.toggle('sel',x.dataset.min===String(min)||(x.dataset.min==='custom'&&![3,5,10].includes(min))));
 }
 function batStart(){
   if(BAT.running||BAT.totalSec<=0)return;
@@ -1344,12 +1473,11 @@ function batStart(){
   document.getElementById('bat-timer-status').style.color='var(--g)';
   document.getElementById('bat-sim-timer').classList.add('on');
   document.getElementById('bat-sim-timer').classList.remove('warn');
-  // Switch to simulator tab
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
-  document.querySelectorAll('.sec').forEach(x=>x.classList.remove('on'));
-  document.querySelector('[data-t="sim"]').classList.add('on');
-  document.getElementById('sec-sim').classList.add('on');
-  if(chart){chart._rs();chart.render();} // same refresh as clicking the simulator tab
+  // The battle is scored on total assets, so remember where everyone started.
+  BAT.startAssets=calcAssets().tot;
+  // Switch to the simulator and start a stock right away (one less step).
+  showTab('sim');
+  if(S.ended&&!starting)startNew();
   BAT.interval=setInterval(()=>{
     const r=Math.max(0,Math.ceil((BAT.endAt-Date.now())/1000));
     if(r===BAT.remainSec)return;
@@ -1376,13 +1504,21 @@ function batTimeUp(){
   document.getElementById('bst-time').textContent='00:00';
   // Hide sim timer after a short delay so user sees 00:00
   BAT.hideT=setTimeout(()=>{if(!BAT.running)document.getElementById('bat-sim-timer').classList.remove('on','warn');},3000);
-  // Show result if stock is active
-  if(S.stk&&!document.getElementById('btn-nxt').disabled){showResult(false);}
-  // Show time-up alert
-  const alert=document.createElement('div');alert.className='bat-alert';
-  alert.innerHTML=`<div style="font-size:36px;margin-bottom:8px;">⏰</div><div style="font-size:22px;font-weight:700;color:var(--r);margin-bottom:6px;">시간 종료!</div><div style="color:var(--t2);font-size:14px;">대결 시간이 끝났습니다</div>`;
-  document.body.appendChild(alert);
-  setTimeout(()=>{alert.remove();},3000);
+  // End the current stock (if any), then show the battle score: the change in
+  // total assets over the whole battle, across every stock that was played.
+  // (It used to show only the last stock's return, which isn't what players compare.)
+  const wasActive=S.stk&&!S.ended;
+  if(wasActive)showResult(false);
+  const start=BAT.startAssets>0?BAT.startAssets:IC,end=calcAssets().tot,diff=end-start,r=diff/start*100;
+  const rows=`<div class="sr hl"><span>⚔️ 대결 수익률</span><span class="m ${r>=0?'pos':'neg'}">${r>=0?'+':''}${r.toFixed(2)}%</span></div>
+    <div class="sr"><span>대결 손익</span><span class="m ${diff>=0?'pos':'neg'}">${diff>=0?'+':'-'}$${Math.floor(Math.abs(diff)).toLocaleString()} (${fmtUsd(start)} → ${fmtUsd(end)})</span></div>`;
+  document.getElementById('m-t').textContent='⏰ 대결 종료!';
+  if(wasActive||document.getElementById('modal').classList.contains('show'))document.getElementById('m-st').insertAdjacentHTML('afterbegin',rows);
+  else{
+    document.getElementById('m-s').textContent='제한 시간이 끝났습니다';
+    document.getElementById('m-st').innerHTML=rows;
+    openModal();
+  }
 }
 function batStop(){
   if(!BAT.running)return;
@@ -1415,8 +1551,14 @@ document.getElementById('theme-toggle').addEventListener('click',()=>{
   applyTheme(currentTheme()==='light'?'dark':'light');
 });
 applyTheme(safeGet('ts_theme')==='light'?'light':'dark');
-// Resize
-window.addEventListener('resize',()=>{if(chart){chart._rs();chart.render();}patCharts.forEach(c=>c.resize());});
+// Resize. Mobile browsers fire resize when the address bar slides; only snap the
+// chart back to the latest candle when its size really changed.
+window.addEventListener('resize',()=>{
+  if(chart){const w=chart.W,h=chart.H;chart._rs();if(chart.W!==w||chart.H!==h)chart.toEnd();chart.render();}
+  patCharts.forEach(c=>c.resize());
+});
+// Start downloading the first stock while the player is still reading the page.
+prefetch(document.getElementById('sel-m').value);
 </script>
 </body>
 </html>
