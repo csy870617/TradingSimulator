@@ -567,11 +567,30 @@ function getYahooSymbol(ticker, market){
   return ticker;
 }
 
+// Price files bundled with the site by the deploy workflow (scripts/fetch-data.mjs).
+// They come from our own origin, so no public CORS proxy is involved; index.json
+// lists which stocks have a file so only those are picked.
+let DATA_IDX=null;
+const dataIdxReady=fetch('data/index.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{DATA_IDX=j;}).catch(()=>{});
+async function fetchBundled(symbol,market,startDate){
+  try{
+    const r=await fetch(`data/${encodeURIComponent(symbol)}.json`);if(!r.ok)return null;
+    const j=await r.json(),dec=(market==='kos'||market==='kosd')?0:2,px=x=>+(x/j.k).toFixed(dec);
+    let d=Date.UTC(+j.d0.slice(0,4),+j.d0.slice(5,7)-1,+j.d0.slice(8,10))/864e5;
+    const all=j.r.map(x=>{d+=x[0];return {time:new Date(d*864e5).toISOString().slice(0,10),open:px(x[1]),high:px(x[2]),low:px(x[3]),close:px(x[4]),vol:x[5]};});
+    const from=fmtDt(startDate),cut=all.filter(c=>c.time>=from);
+    return cut.length>100?cut:all.length>100?all:null; // recent listings: use all they have
+  }catch(e){return null;}
+}
+
 async function fetchRealData(ticker, market){
   const symbol=getYahooSymbol(ticker, market);
   // Random start year between 2010 and 2023
   const startYear=2010+Math.floor(Math.random()*14);
   const startDate=new Date(startYear, 0, 1);
+  const bundled=await fetchBundled(symbol,market,startDate);
+  if(bundled)return bundled;
+  // Fallback (e.g. opened as a local file, or a stock without a bundled file)
   const endDate=new Date(); // today
   const period1=Math.floor(startDate.getTime()/1000);
   const period2=Math.floor(endDate.getTime()/1000);
@@ -609,8 +628,11 @@ function firstOk(ps){
 let PF=null;
 function prefetch(mk){
   const m=MKT[mk];
-  let stk=m.s[Math.floor(Math.random()*m.s.length)];
-  if(S.stk&&stk.t===S.stk.t&&m.s.length>1)stk=m.s[(m.s.indexOf(stk)+1)%m.s.length];
+  // Prefer stocks that have a bundled price file (delisted/renamed ones don't).
+  let pool=m.s;
+  if(DATA_IDX&&Array.isArray(DATA_IDX[mk])){const ok=new Set(DATA_IDX[mk]);const f=m.s.filter(x=>ok.has(x.t));if(f.length)pool=f;}
+  let stk=pool[Math.floor(Math.random()*pool.length)];
+  if(S.stk&&stk.t===S.stk.t&&pool.length>1)stk=pool[(pool.indexOf(stk)+1)%pool.length];
   const job={mk,stk,data:null,done:false};
   job.promise=fetchRealData(stk.t,mk).catch(()=>null).then(d=>{job.data=d;job.done=true;return d;});
   PF=job;return job;
@@ -643,16 +665,8 @@ function parseYahooData(data, market){
       if(candles.length&&candles[candles.length-1].time===candle.time)candles[candles.length-1]=candle;
       else candles.push(candle);
     }
-    // Raw (unadjusted) Yahoo data shows a large price gap on split days but no
-    // split field, so held positions wouldn't adjust. Detect gaps that closely
-    // match a known split ratio and mark them so advanceOneDaily adjusts shares.
-    for(let i=1;i<candles.length;i++){
-      if(candles[i].open<=0)continue;
-      const ratioGap=candles[i-1].close/candles[i].open;
-      for(const sr of SPLIT_RATIOS){
-        if(Math.abs(ratioGap-sr)/sr<0.06){candles[i].split=sr;break;}
-      }
-    }
+    // Yahoo's prices are already split-adjusted, so no split handling is needed
+    // (guessing splits from price gaps mislabelled real -50%/-67% crashes).
     return candles;
   }catch(e){return null;}
 }
@@ -1558,7 +1572,7 @@ window.addEventListener('resize',()=>{
   patCharts.forEach(c=>c.resize());
 });
 // Start downloading the first stock while the player is still reading the page.
-prefetch(document.getElementById('sel-m').value);
+dataIdxReady.then(()=>{if(!PF&&!starting&&S.ended)prefetch(document.getElementById('sel-m').value);});
 </script>
 </body>
 </html>
